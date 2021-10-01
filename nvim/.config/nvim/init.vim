@@ -56,7 +56,8 @@ let g:startify_lists = [
 let g:startify_session_autoload = 1
 
 " " FZF RG searches for filename in addition to the phrase, this to skip this issue
-command! -bang -nargs=* Rg call fzf#vim#grep("rg --column --line-number --no-heading --hidden --no-ignore --color=always --smart-case ".shellescape(<q-args>), 1, fzf#vim#with_preview({'options': '--delimiter : --nth 4..'}), <bang>0)
+"command! -bang -nargs=* Rg call fzf#vim#grep("rg --column --line-number --no-heading --color=always --smart-case ".shellescape(<q-args>), 1, {'options': '--delimiter : --nth 4..'}, <bang>0)
+command! -bang -nargs=* Rg call fzf#vim#grep("rg --column --line-number --no-heading --color=always --smart-case ".shellescape(<q-args>), 1, fzf#vim#with_preview({'options': '--delimiter : --nth 4..'}), <bang>0)
 
 " " Show Markdown symbols
 set conceallevel=0
