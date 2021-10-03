@@ -10,7 +10,8 @@ call plug#begin()
 	Plug 'neoclide/coc.nvim', { 'do': 'yarn install --frozen-lockfile' }
 	let g:coc_global_extensions = ['coc-tslint-plugin', 'coc-tsserver', 'coc-css', 'coc-html', 'coc-json', 'coc-prettier']  " list of CoC extensions needed
 
-	Plug 'jiangmiao/auto-pairs' "this will auto close ( [ {
+  "this will auto close ( [ {
+	Plug 'jiangmiao/auto-pairs'
 
 	" these two plugins will add highlighting and indenting to JSX and TSX files.
 	Plug 'yuezk/vim-js'
@@ -143,6 +144,9 @@ nmap <leader>gb :Telescope git_branches theme=get_dropdown<CR>
 
 " " List stash items
 nmap <leader>gt :Telescope git_stash theme=get_dropdown<CR>
+
+" " AutoPair toggle key
+let g:AutoPairsShortcutToggle = '<F2>'
 
 " " Floaterm toggle key
 let g:floaterm_keymap_toggle = '<C-t>'
