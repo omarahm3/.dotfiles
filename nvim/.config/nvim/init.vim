@@ -44,8 +44,8 @@ call plug#begin()
   Plug 'junegunn/fzf.vim'
 call plug#end()
 
-let g:coc_node_path = '/home/mrgeek/.local/share/nvm/v16.3.0/bin/node'
-let g:coc_npm_path = '/home/mrgeek/.local/share/nvm/v16.3.0/bin/npm'
+let g:coc_node_path = '~/.local/share/nvm/v16.3.0/bin/node'
+let g:coc_npm_path = '~/.local/share/nvm/v16.3.0/bin/npm'
 
 let g:startify_lists = [
           \ { 'type': 'files',     'header': ['   Files']            },
