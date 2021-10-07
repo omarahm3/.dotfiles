@@ -32,8 +32,10 @@ call plug#begin()
   Plug 'mhinz/vim-startify'
   Plug 'mg979/vim-visual-multi', {'branch': 'master'}
   Plug 'folke/tokyonight.nvim', { 'branch': 'main' }
+  Plug 'sonph/onehalf', { 'rtp': 'vim' }
   Plug 'junegunn/fzf', { 'do': { -> fzf#install() } }
   Plug 'junegunn/fzf.vim'
+  Plug 'wfxr/minimap.vim'
 call plug#end()
 
 " ################# MISC #################
@@ -223,7 +225,7 @@ let g:startify_lists = [
   \ ]
 let g:startify_session_autoload = 1
 let g:tokyonight_style = "storm"
-"let g:airline_theme='storm'
+let g:airline_theme="onehalfdark"
 let g:NERDTreeIgnore = ['^node_modules$']
 " " AutoPair toggle key
 let g:AutoPairsShortcutToggle = '<F2>'
