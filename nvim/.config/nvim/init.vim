@@ -6,8 +6,8 @@ if empty(glob('~/.config/nvim/autoload/plug.vim'))
 endif
 
 call plug#begin()
-	" This for auto complete, prettier and tslinting
-	Plug 'neoclide/coc.nvim', { 'do': 'yarn install --frozen-lockfile' }
+	"" This for auto complete, prettier and tslinting
+	"Plug 'neoclide/coc.nvim', { 'do': 'yarn install --frozen-lockfile' }
 
   "this will auto close ( [ {
 	Plug 'jiangmiao/auto-pairs'
@@ -37,6 +37,12 @@ call plug#begin()
   Plug 'junegunn/fzf.vim'
   Plug 'wfxr/minimap.vim'
   Plug 'ThePrimeagen/harpoon'
+  Plug 'neovim/nvim-lspconfig'
+  Plug 'williamboman/nvim-lsp-installer'
+  " main one
+  Plug 'ms-jpq/coq_nvim', {'branch': 'coq'}
+  " 9000+ Snippets
+  Plug 'ms-jpq/coq.artifacts', {'branch': 'artifacts'}
 call plug#end()
 
 " ################# MISC #################
@@ -54,18 +60,18 @@ if exists('+termguicolors')
 endif
 
 " Remap for format selected region
-xmap <leader>f  <Plug>(coc-format-selected)
+"xmap <leader>f  <Plug>(coc-format-selected)
 
-augroup mygroup
-  autocmd!
-  " Setup formatexpr specified filetype(s).
-  autocmd FileType typescript,json setl formatexpr=CocAction('formatSelected')
-  " Update signature help on jump placeholder
-  autocmd User CocJumpPlaceholder call CocActionAsync('showSignatureHelp')
-augroup end
+"augroup mygroup
+  "autocmd!
+  "" Setup formatexpr specified filetype(s).
+  "autocmd FileType typescript,json setl formatexpr=CocAction('formatSelected')
+  "" Update signature help on jump placeholder
+  "autocmd User CocJumpPlaceholder call CocActionAsync('showSignatureHelp')
+"augroup end
 
 " Use `:Format` to format current buffer
-command! -nargs=0 Format :call CocAction('format')
+"command! -nargs=0 Format :call CocAction('format')
 
 " ################# Setters #################
 
@@ -118,13 +124,13 @@ function! s:check_back_space() abort
   return !col || getline('.')[col - 1]  =~# '\s'
 endfunction
 
-function! s:show_documentation()
-  if (index(['vim','help'], &filetype) >= 0)
-    execute 'h '.expand('<cword>')
-  else
-    call CocAction('doHover')
-  endif
-endfunction
+"function! s:show_documentation()
+  "if (index(['vim','help'], &filetype) >= 0)
+    "execute 'h '.expand('<cword>')
+  "else
+    "call CocAction('doHover')
+  "endif
+"endfunction
 
 function! Wipeout()
   " list of *all* buffer numbers
@@ -163,16 +169,16 @@ endfunction
 
 " Use tab for trigger completion with characters ahead and navigate.
 " Use command ':verbose imap <tab>' to make sure tab is not mapped by other plugin.
-inoremap <silent><expr> <TAB>
-      \ pumvisible() ? "\<C-n>" :
-      \ <SID>check_back_space() ? "\<TAB>" :
-      \ coc#refresh()
+"inoremap <silent><expr> <TAB>
+      "\ pumvisible() ? "\<C-n>" :
+      "\ <SID>check_back_space() ? "\<TAB>" :
+      "\ coc#refresh()
 inoremap <expr><S-TAB> pumvisible() ? "\<C-p>" : "\<C-h>"
 " Use <c-space> to trigger completion.
-inoremap <silent><expr> <c-space> coc#refresh()
+"inoremap <silent><expr> <c-space> coc#refresh()
 " Use <cr> to confirm completion, `<C-g>u` means break undo chain at current position.
 " Coc only does snippet and additional edit on confirm.
-inoremap <expr> <cr> pumvisible() ? "\<C-y>" : "\<C-g>u\<CR>"
+"inoremap <expr> <cr> pumvisible() ? "\<C-y>" : "\<C-g>u\<CR>"
 
 " ################# nnoremaps #################
 
@@ -186,7 +192,7 @@ nnoremap <leader>P "+P
 " " NerdTree toggle shortcut
 nnoremap <silent> <C-k>b :NERDTreeToggle<CR>
 " Use K to show documentation in preview window
-nnoremap <silent> K :call <SID>show_documentation()<CR>
+"nnoremap <silent> K :call <SID>show_documentation()<CR>
 
 " ################# vnoremaps #################
 
@@ -212,7 +218,7 @@ nmap <leader>gb :Telescope git_branches theme=get_dropdown<CR>
 " " List stash items
 nmap <leader>gt :Telescope git_stash theme=get_dropdown<CR>
 " Remap for format selected region
-nmap <leader>f  <Plug>(coc-format-selected)
+"nmap <leader>f  <Plug>(coc-format-selected)
 
 nmap <leader>a  :lua require("harpoon.mark").add_file()<CR>
 
@@ -220,8 +226,8 @@ nmap <leader>h  :lua require("harpoon.ui").toggle_quick_menu()<CR>
 
 " ################# letters #################
 
-let g:coc_node_path = '~/.local/share/nvm/v16.3.0/bin/node'
-let g:coc_npm_path = '~/.local/share/nvm/v16.3.0/bin/npm'
+"let g:coc_node_path = '~/.local/share/nvm/v16.3.0/bin/node'
+"let g:coc_npm_path = '~/.local/share/nvm/v16.3.0/bin/npm'
 let g:startify_lists = [
   \ { 'type': 'files',     'header': ['   Files']            },
   \ { 'type': 'dir',       'header': ['   Current Directory '. getcwd()] },
@@ -240,19 +246,19 @@ let g:floaterm_position = 'bottomright'
 " " Activate rainbow
 let g:rainbow_active = 1
 " COC config
-let g:coc_global_extensions = [
-  \ 'coc-tslint-plugin',
-  \ 'coc-snippets',
-  \ 'coc-css',
-  \ 'coc-html',
-  \ 'coc-prettier',
-  \ 'coc-pairs',
-  \ 'coc-tsserver',
-  \ 'coc-eslint', 
-  \ 'coc-prettier', 
-  \ 'coc-json', 
-  \ 'coc-go',
-  \ ]
+"let g:coc_global_extensions = [
+  "\ 'coc-tslint-plugin',
+  "\ 'coc-snippets',
+  "\ 'coc-css',
+  "\ 'coc-html',
+  "\ 'coc-prettier',
+  "\ 'coc-pairs',
+  "\ 'coc-tsserver',
+  "\ 'coc-eslint', 
+  "\ 'coc-prettier', 
+  "\ 'coc-json', 
+  "\ 'coc-go',
+  "\ ]
 
 " ################# autocmds #################
 
@@ -262,4 +268,4 @@ autocmd VimEnter * NERDTree
 " Highlight currently open buffer in NERDTree
 autocmd BufEnter * call SyncTree()
 " Highlight symbol under cursor on CursorHold
-autocmd CursorHold * silent call CocActionAsync('highlight')
+"autocmd CursorHold * silent call CocActionAsync('highlight')
