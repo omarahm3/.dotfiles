@@ -36,6 +36,7 @@ call plug#begin()
   Plug 'junegunn/fzf', { 'do': { -> fzf#install() } }
   Plug 'junegunn/fzf.vim'
   Plug 'wfxr/minimap.vim'
+  Plug 'ThePrimeagen/harpoon'
 call plug#end()
 
 " ################# MISC #################
@@ -212,6 +213,10 @@ nmap <leader>gb :Telescope git_branches theme=get_dropdown<CR>
 nmap <leader>gt :Telescope git_stash theme=get_dropdown<CR>
 " Remap for format selected region
 nmap <leader>f  <Plug>(coc-format-selected)
+
+nmap <leader>a  :lua require("harpoon.mark").add_file()<CR>
+
+nmap <leader>h  :lua require("harpoon.ui").toggle_quick_menu()<CR>
 
 " ################# letters #################
 
