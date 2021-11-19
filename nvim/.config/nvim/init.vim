@@ -37,6 +37,9 @@ call plug#begin()
   Plug 'junegunn/fzf.vim'
   Plug 'wfxr/minimap.vim'
   Plug 'ThePrimeagen/harpoon'
+  Plug 'hashivim/vim-terraform'
+  Plug 'vim-syntastic/syntastic'
+  Plug 'juliosueiras/vim-terraform-completion'
 call plug#end()
 
 " ################# MISC #################
@@ -44,6 +47,9 @@ call plug#end()
 " " FZF RG searches for filename in addition to the phrase, this to skip this issue
 "command! -bang -nargs=* Rg call fzf#vim#grep("rg --column --line-number --no-heading --color=always --smart-case ".shellescape(<q-args>), 1, {'options': '--delimiter : --nth 4..'}, <bang>0)
 command! -bang -nargs=* Rg call fzf#vim#grep("rg --column --line-number --no-heading --color=always --smart-case ".shellescape(<q-args>), 1, fzf#vim#with_preview({'options': '--delimiter : --nth 4..'}), <bang>0)
+
+let g:tokyonight_style = "night"
+let g:airline_theme="onehalfdark"
 
 colorscheme tokyonight
 
@@ -229,8 +235,6 @@ let g:startify_lists = [
   \ { 'type': 'bookmarks', 'header': ['   Bookmarks']      },
   \ ]
 let g:startify_session_autoload = 1
-let g:tokyonight_style = "storm"
-let g:airline_theme="onehalfdark"
 let g:NERDTreeIgnore = ['^node_modules$']
 " " AutoPair toggle key
 let g:AutoPairsShortcutToggle = '<F2>'
