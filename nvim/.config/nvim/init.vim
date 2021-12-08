@@ -40,6 +40,7 @@ call plug#begin()
   Plug 'hashivim/vim-terraform'
   Plug 'vim-syntastic/syntastic'
   Plug 'juliosueiras/vim-terraform-completion'
+  Plug 'honza/vim-snippets'
 call plug#end()
 
 " ################# MISC #################
