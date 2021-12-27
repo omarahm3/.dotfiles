@@ -10,6 +10,10 @@ local hooks = require "core.hooks"
 -- To add new plugins, use the "setup_mappings" hook,
 
 vim.g.copilot_no_tab_map = true;
+-- This to enable treesitter and lsp for file like Dockerfile.dev
+vim.cmd 'autocmd BufRead,BufNewFile Dockerfile,Dockerfile.* set filetype=dockerfile'
+-- Stop sourcing filetype.vim
+vim.g.did_load_filetypes = 1
 
 hooks.add("setup_mappings", function(map)
   map("n", "<C-p>", ":Telescope find_files<CR>")
@@ -22,6 +26,8 @@ hooks.add("setup_mappings", function(map)
   map("n", "gs", "<cmd>lua vim.lsp.diagnostic.enable()<CR>")
   map("n", "<leader>gs", ":G<CR>")
   map("n", "<leader>gb", ":G blame<CR>")
+  map("n", "<leader>t", ":TroubleToggle<CR>")
+  map("n", "<F12>", ":TZAtaraxis<CR>")
 end)
 
 -- NOTE : opt is a variable  there (most likely a table if you want multiple options),
@@ -31,7 +37,6 @@ end)
 -- To add new plugins, use the "install_plugin" hook,
 
 -- examples below:
-
 hooks.add("install_plugins", function(use)
   use {
     "williamboman/nvim-lsp-installer",
@@ -47,9 +52,66 @@ hooks.add("install_plugins", function(use)
     end,
   }
 
+  use {
+    "karb94/neoscroll.nvim",
+    opt = true,
+    config = function()
+      require("neoscroll").setup()
+    end,
+
+    -- lazy loading
+    setup = function()
+      require("core.utils").packer_lazy_load "neoscroll.nvim"
+    end,
+  }
+
   use {"tpope/vim-fugitive"}
 
   use {"folke/tokyonight.nvim"}
+
+  use { "nathom/filetype.nvim" }
+
+  use {
+    "Pocco81/TrueZen.nvim",
+    cmd = {
+      "TZAtaraxis",
+      "TZMinimalist",
+      "TZFocus",
+    },
+    config = function()
+      -- check https://github.com/Pocco81/TrueZen.nvim#setup-configuration (init.lua version)
+      local true_zen = require("true-zen")
+
+      true_zen.setup {
+        integrations = {
+          tmux = true,
+        }
+      }
+    end
+  }
+
+  use {
+    "luukvbaal/stabilize.nvim",
+    config = function() require("stabilize").setup() end
+  }
+
+  use {
+    "folke/trouble.nvim",
+    opt = true,
+    requires = "kyazdani42/nvim-web-devicons",
+    config = function()
+      require("trouble").setup {
+        -- your configuration comes here
+        -- or leave it empty to use the default settings
+        -- refer to the configuration section below
+      }
+    end,
+
+    -- lazy loading
+    setup = function()
+      require("core.utils").packer_lazy_load "trouble.nvim"
+    end,
+  }
 
   -- use {"sbdchd/neoformat"}
 
