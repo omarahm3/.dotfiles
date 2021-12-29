@@ -28,6 +28,9 @@ hooks.add("setup_mappings", function(map)
   map("n", "<leader>gb", ":G blame<CR>")
   map("n", "<leader>t", ":TroubleToggle<CR>")
   map("n", "<F12>", ":TZAtaraxis<CR>")
+  map("n", "<leader>ff", ":lua require('spectre').open()<CR>")
+  map("n", "<leader>fc", ":lua require('spectre').open_visual({select_word=true})<CR>")
+  map("n", "<leader>fp", "viw:lua require('spectre').open_file_search()<cr>")
 end)
 
 -- NOTE : opt is a variable  there (most likely a table if you want multiple options),
@@ -110,6 +113,18 @@ hooks.add("install_plugins", function(use)
     -- lazy loading
     setup = function()
       require("core.utils").packer_lazy_load "trouble.nvim"
+    end,
+  }
+
+  use {
+    "windwp/nvim-spectre",
+    requires = "nvim-lua/plenary.nvim",
+    config = function()
+      require("spectre").setup {
+        -- your configuration comes here
+        -- or leave it empty to use the default settings
+        -- refer to the configuration section below
+      }
     end,
   }
 
