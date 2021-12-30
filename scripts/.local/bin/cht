@@ -1,0 +1,24 @@
+#!/usr/bin/bash
+file=$(readlink -f "$1")
+dir=$(dirname "$file")
+# This to shift the first argument
+shift
+# Now replace all spaces with + sign
+keyword=$(echo $* | tr ' ' '+')
+
+cd "$dir" || exit
+
+ask() {
+  curl -s https://cht.sh/"$*" | less -R
+}
+
+[ -z "$keyword" ] && keyword=":learn"
+case "$file" in
+  *rs) ask rust/"$keyword";;
+  *sh) ask bash/"$keyword";;
+  *lua) ask lua/"$keyword";;
+  *ts) ask typescript/"$keyword";;
+  *js) ask javascript/"$keyword";;
+  *php) ask php/"$keyword";;
+  *) ask "$*";;
+esac

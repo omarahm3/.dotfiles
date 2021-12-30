@@ -31,6 +31,8 @@ hooks.add("setup_mappings", function(map)
   map("n", "<leader>ff", ":lua require('spectre').open()<CR>")
   map("n", "<leader>fc", ":lua require('spectre').open_visual({select_word=true})<CR>")
   map("n", "<leader>fp", "viw:lua require('spectre').open_file_search()<cr>")
+  -- Cheat sheet script
+  map("n", "<leader>ct", ":w! | :split | te cht <c-r>% ")
 end)
 
 -- NOTE : opt is a variable  there (most likely a table if you want multiple options),
