@@ -4,6 +4,8 @@ set PATH /home/mrgeek/go/bin $PATH
 set PATH /home/mrgeek/.config/composer/vendor/bin $PATH
 set PATH /home/mrgeek/.fly/bin $PATH
 set PATH /home/mrgeek/.deta/bin $PATH
+set PATH /home/mrgeek/.cargo/bin $PATH
+set PATH /home/mrgeek/.gem/ruby/2.7.0/bin $PATH
 
 source ~/.config/fish/private.fish
 
@@ -12,3 +14,5 @@ starship init fish | source
 thefuck --alias | source
 
 nvm use lts > /dev/null
+
+bass source ~/.cargo/env
