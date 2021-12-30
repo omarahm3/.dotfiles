@@ -16,7 +16,10 @@ M.plugins = {
     dashboard = true,
   },
   options = {
-    setup_lspconf = "custom.plugins.lspconfig"
-  }
+    lspconfig = {
+      setup_lspconf = "custom.plugins.lspconfig",
+    },
+  },
 }
+
 return M
