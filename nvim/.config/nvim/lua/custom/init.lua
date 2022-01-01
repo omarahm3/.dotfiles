@@ -28,7 +28,7 @@ hooks.add("setup_mappings", function(map)
   map("n", "<leader>gb", ":G blame<CR>")
   map("n", "<leader>t", ":TroubleToggle<CR>")
   map("n", "<F12>", ":TZAtaraxis<CR>")
-  map("n", "<leader>ff", ":lua require('spectre').open()<CR>")
+  map("n", "<leader>fo", ":lua require('spectre').open()<CR>")
   map("n", "<leader>fc", ":lua require('spectre').open_visual({select_word=true})<CR>")
   map("n", "<leader>fp", "viw:lua require('spectre').open_file_search()<cr>")
   -- Cheat sheet script
