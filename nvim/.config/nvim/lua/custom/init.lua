@@ -131,6 +131,8 @@ hooks.add("install_plugins", function(use)
     end
   }
 
+  use { "kamykn/spelunker.vim" }
+
   -- use {"sbdchd/neoformat"}
 
   -- use {"github/copilot.vim"}
