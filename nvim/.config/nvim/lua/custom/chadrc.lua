@@ -19,6 +19,9 @@ M.plugins = {
     lspconfig = {
       setup_lspconf = "custom.plugins.lspconfig",
     },
+    luasnip = {
+       snippet_path = { "/home/mrgeek/.config/nvim/lua/custom/snippets/" },
+    },
   },
 }
 
