@@ -33,7 +33,17 @@ hooks.add("setup_mappings", function(map)
   map("n", "<leader>fp", "viw:lua require('spectre').open_file_search()<cr>")
   -- Cheat sheet script
   map("n", "<leader>ct", ":w! | :vne | te cht <c-r>% ")
+  -- Hop keys
+  map("n", "<leader>hh", ":lua require'hop'.hint_words()<CR>")
+  map("n", "<leader>hl", ":lua require'hop'.hint_lines()<CR>")
+  map("v", "<leader>hh", ":lua require'hop'.hint_words()<CR>")
+  map("v", "<leader>hl", ":lua require'hop'.hint_lines()<CR>")
 end)
+
+-- Hop colors
+vim.cmd 'hi HopNextKey guifg=#ff9900'
+vim.cmd 'hi HopNextKey1 guifg=#ff9900'
+vim.cmd 'hi HopNextKey2 guifg=#ff9900'
 
 -- NOTE : opt is a variable  there (most likely a table if you want multiple options),
 -- you can remove it if you dont have any custom options
@@ -128,6 +138,15 @@ hooks.add("install_plugins", function(use)
         -- or leave it empty to use the default settings
         -- refer to the configuration section below
       }
+    end
+  }
+
+  use {
+    'phaazon/hop.nvim',
+    branch = 'v1', -- optional but strongly recommended
+    config = function()
+      -- you can configure Hop the way you like here; see :h hop-config
+      require'hop'.setup { keys = 'etovxqpdygfblzhckisuran' }
     end
   }
 
