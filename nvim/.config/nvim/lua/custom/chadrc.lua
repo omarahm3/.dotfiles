@@ -8,7 +8,7 @@ M.options, M.ui, M.mappings, M.plugins = {}, {}, {}, {}
 -- example of changing theme:
 
 M.ui = {
-   theme = "onedark-deep",
+   theme = "javacafe",
 }
 
 M.plugins = {
