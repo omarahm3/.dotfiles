@@ -13,6 +13,6 @@ starship init fish | source
 
 thefuck --alias | source
 
-nvm use lts > /dev/null
+nvm use --lts > /dev/null
 
 bass source ~/.cargo/env
