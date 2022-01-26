@@ -150,6 +150,8 @@ hooks.add("install_plugins", function(use)
     end
   }
 
+  use { 'yamatsum/nvim-cursorline' }
+
   -- use {"sbdchd/neoformat"}
 
   -- use {"github/copilot.vim"}
