@@ -126,6 +126,15 @@ return packer.startup(function(use)
     end,
   }
 
+  use {
+    'norcalli/nvim-colorizer.lua',
+    opt = true,
+    event = 'BufRead',
+    config = function()
+      require 'colorizer'.setup()
+    end
+  }
+
   -- Git --
   use {
     'lewis6991/gitsigns.nvim',
