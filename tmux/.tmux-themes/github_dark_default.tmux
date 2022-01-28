@@ -2,12 +2,12 @@
 
 # Github colors for Tmux
 
-set -g mode-style "fg=#c9d1d9,bg=#c5c5c5"
+set -g mode-style "fg=#131313,bg=#c5c5c5"
 
-set -g message-style "fg=#c9d1d9,bg=#c5c5c5"
+set -g message-style "fg=#131313,bg=#c5c5c5"
 set -g message-command-style "fg=#c9d1d9,bg=#c5c5c5"
 
-set -g pane-border-style "fg=#b3b1ad"
+set -g pane-border-style "fg=#131313"
 set -g pane-active-border-style "fg=#58a6ff"
 
 set -g status "on"
