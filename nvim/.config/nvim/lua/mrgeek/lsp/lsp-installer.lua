@@ -18,6 +18,11 @@ lsp_installer.on_server_ready(function(server)
     opts = vim.tbl_deep_extend('force', jsonls_opts, opts)
   end
 
+  if server.name == 'psalm' then
+    local psalm_opts = require('mrgeek.lsp.settings.psalm')
+    opts = vim.tbl_deep_extend('force', psalm_opts, opts)
+  end
+
   if server.name == 'sumneko_lua' then
     local lua_opts = require('mrgeek.lsp.settings.sumneko_lua')
     opts = vim.tbl_deep_extend('force', lua_opts, opts)
