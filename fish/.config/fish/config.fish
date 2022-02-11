@@ -9,8 +9,20 @@ set PATH /home/mrgeek/.gem/ruby/2.7.0/bin $PATH
 
 source ~/.config/fish/private.fish
 
-starship init fish | source
+# Execute commands safely by first checking if the command exist or not
+# To avoid errors occurs on fish shell
+function _execute_command
+  if type -q $argv[1]
+    eval $argv
+  else
+    echo "Command [" $argv[1] "] does not exist"
+  end
+end
 
-thefuck --alias | source
+_execute_command starship init fish | source
 
-bass source ~/.cargo/env
+_execute_command thefuck --alias | source
+
+_execute_command bass source ~/.cargo/env
+
+_execute_command nvm use 14.16.0 >/dev/null 2>&1
