@@ -1,3 +1,4 @@
+# Thanks to @Peter for some of the amazing tricks here
 function k-logs --description 'k-logs <context> <resource_name>'
   set -l POD (k-getpod $argv[1] $argv[2])
   set -l BASE_COMMAND "kubectl --kubeconfig='/home/mrgeek/.kube/$argv[1].yaml' -n default"
