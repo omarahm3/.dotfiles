@@ -1,7 +1,7 @@
 #!/bin/bash
 
-LIST_DATA="#{window_name} #{pane_title} #{pane_current_path} #{pane_current_command}"
-FZF_COMMAND="fzf --reverse --with-nth 4 --color=hl:2"
+LIST_DATA="#{session_name} #{window_name} #{pane_title} #{pane_current_path} #{pane_current_command}"
+FZF_COMMAND="fzf --reverse --with-nth 2,3,5 --color=hl:2"
 
 TARGET_SPEC="#{session_name}:#{window_id}:#{pane_id}"
 
