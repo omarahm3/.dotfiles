@@ -26,3 +26,5 @@ _execute_command thefuck --alias | source
 _execute_command bass source ~/.cargo/env
 
 _execute_command nvm use 14.16.0 >/dev/null 2>&1
+
+nerdfetch
