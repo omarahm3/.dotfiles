@@ -14,17 +14,26 @@ source ~/.config/fish/private.fish
 function _execute_command
   if type -q $argv[1]
     eval $argv
+    true
   else
-    echo "Command [" $argv[1] "] does not exist"
+    false
   end
 end
 
-_execute_command starship init fish | source
+_execute_command starship >/dev/null 2>&1
 
-_execute_command thefuck --alias | source
+if test $status -eq 0
+  _execute_command starship init fish | source
+end
+
+_execute_command thefuck >/dev/null 2>&1
+
+if test $status -eq 0
+  _execute_command thefuck --alias | source
+end
 
 _execute_command bass source ~/.cargo/env
 
 _execute_command nvm use 14.16.0 >/dev/null 2>&1
 
-nerdfetch
+_execute_command nerdfetch
