@@ -23,13 +23,19 @@ end
 _execute_command starship >/dev/null 2>&1
 
 if test $status -eq 0
-  _execute_command starship init fish | source
+  starship init fish | source
 end
 
 _execute_command thefuck >/dev/null 2>&1
 
 if test $status -eq 0
-  _execute_command thefuck --alias | source
+  thefuck --alias | source
+end
+
+_execute_command zoxide >/dev/null 2>&1
+
+if test $status -eq 0
+  zoxide init fish | source
 end
 
 _execute_command bass source ~/.cargo/env
@@ -37,3 +43,14 @@ _execute_command bass source ~/.cargo/env
 _execute_command nvm use 14.16.0 >/dev/null 2>&1
 
 _execute_command nerdfetch
+
+# Generated for envman. Do not edit.
+test -s "$HOME/.config/envman/load.fish"; and source "$HOME/.config/envman/load.fish"
+
+if test -x (command -v fw)
+  if test -x (command -v fzf)
+    fw print-fish-setup -f | source
+  else
+    fw print-fish-setup | source
+  end
+end
