@@ -6,6 +6,7 @@ set PATH /home/mrgeek/.fly/bin $PATH
 set PATH /home/mrgeek/.deta/bin $PATH
 set PATH /home/mrgeek/.cargo/bin $PATH
 set PATH /home/mrgeek/.gem/ruby/2.7.0/bin $PATH
+set PATH /home/mrgeek/.local/.npm-global/bin $PATH
 
 source ~/.config/fish/private.fish
 
