@@ -89,8 +89,9 @@ set_from_resource $ws10_key i3-wm.workspace.10.key 0
 # Custom Keybindings
 ###############################################################################
 
-bindsym ctrl+space exec dunstctl close
-bindsym ctrl+shift+space exec dunstctl close-all
+#bindsym ctrl+space exec dunstctl close
+#bindsym ctrl+shift+space exec dunstctl close-all
+bindsym ctrl+shift+space exec dunstctl close
 bindsym ctrl+grave exec dunstctl history
 bindsym ctrl+shift+period exec dunstctl context
 
