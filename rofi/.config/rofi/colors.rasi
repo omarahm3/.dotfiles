@@ -8,7 +8,7 @@
     cyan:	  #2aa198;
     green:	  #859900;
     fg:           #abb2bfaa;
-    bg:           #282c3444;
+    bg:           #282c34;
     selected-bg:  #4b5263aa;
     selected-fg:  #abb2bf;
     win-bg:       transparent;
