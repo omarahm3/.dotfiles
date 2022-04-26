@@ -668,3 +668,4 @@ exec --no-startup-id $i3-wm.program.3
 
 exec --no-startup-id $HOME/.config/polybar/launch.sh
 exec --no-startup-id /usr/bin/dunst
+exec --no-startup-id xinput --set-prop 'SynPS/2 Synaptics TouchPad' 'libinput Tapping Enabled' 1
