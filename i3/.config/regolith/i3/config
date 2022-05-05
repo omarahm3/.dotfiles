@@ -44,6 +44,7 @@ set_from_resource $alt  i3-wm.alt Mod1
 
 set_from_resource $i3-wm.binding. i3-wm.binding.
 
+
 ###############################################################################
 # Workspace Names
 # These are the labels which define each i3 workspace.
@@ -94,6 +95,7 @@ set_from_resource $ws10_key i3-wm.workspace.10.key 0
 bindsym ctrl+shift+space exec dunstctl close
 bindsym ctrl+grave exec dunstctl history
 bindsym ctrl+shift+period exec dunstctl context
+bindsym --release $mod+x exec --no-startup-id /snap/bin/flameshot gui
 
 ###############################################################################
 # Launcher dialogs
