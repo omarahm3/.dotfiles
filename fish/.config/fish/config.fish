@@ -55,3 +55,5 @@ if test -x (command -v fw)
     fw print-fish-setup | source
   end
 end
+
+alias cd z
