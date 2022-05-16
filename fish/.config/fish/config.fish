@@ -24,6 +24,7 @@ end
 _execute_command starship >/dev/null 2>&1
 
 if test $status -eq 0
+  set -Ux STARSHIP_CONFIG /home/mrgeek/.config/starship/starship.toml
   starship init fish | source
 end
 
