@@ -82,6 +82,9 @@ bindsym $mod+Ctrl+space exec $i3-wm.program.launcher.window
 set $i3-wm.program.file_search rofi -show find -modi find:/usr/share/rofi/modi/finder.sh
 bindsym $mod+Mod1+space exec $i3-wm.program.file_search
 
+## Launch // Wifi network // <> n ##
+bindsym $mod+n exec ~/.local/bin/wifi
+
 ###############################################################################
 # Window and Workspace Navigation
 ###############################################################################
