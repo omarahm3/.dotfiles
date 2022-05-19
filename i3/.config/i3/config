@@ -544,8 +544,8 @@ exec --no-startup-id $i3-wm.program.notifications
 # exec --no-startup-id /usr/lib/xfce4/notifyd/xfce4-notifyd &
 
 # Load nm-applet to provide auth dialogs for network access
-set $i3-wm.program.nm-applet /usr/bin/nm-applet
-exec --no-startup-id $i3-wm.program.nm-applet
+# set $i3-wm.program.nm-applet /usr/bin/nm-applet
+# exec --no-startup-id $i3-wm.program.nm-applet
 
 # Load auth work with polkit-gnome
 set $i3-wm.program.gnome-auth /usr/lib/polkit-gnome/polkit-gnome-authentication-agent-1
