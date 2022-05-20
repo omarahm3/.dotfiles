@@ -85,6 +85,9 @@ bindsym $mod+Mod1+space exec $i3-wm.program.file_search
 ## Launch // Wifi network // <> n ##
 bindsym $mod+n exec ~/.local/bin/wifi
 
+## Launch // Dropdown terminal // <> q ##
+bindsym $mod+q [instance="dropdown"] scratchpad show; [instance="dropdown"] move position center
+
 ###############################################################################
 # Window and Workspace Navigation
 ###############################################################################
@@ -457,6 +460,10 @@ for_window [class="Bluetooth-sendto" instance="bluetooth-sendto"] floating enabl
 for_window [class="Pamac-manager"] floating enable
 for_window [window_role="About"] floating enable
 
+for_window [instance="dropdown"] floating enable, border 1px
+for_window [instance="dropdown"] resize set 900 400
+for_window [instance="dropdown"] move scratchpad, scratchpad show
+
 ###############################################################################
 # i3 Colors and Fonts
 ###############################################################################
@@ -603,3 +610,6 @@ exec --no-startup-id sleep 2 && nitrogen --restore
 # autotiling script
 # https://github.com/nwg-piotr/autotiling
 # `yay -S autotiling ;) (it is in AUR)
+
+# Dropdown terminal
+exec --no-startup-id kitty --class dropdown -e /usr/bin/fish
