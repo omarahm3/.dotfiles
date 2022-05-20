@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
 
-UPDATES=$(apt list --upgradable 2> /dev/null | grep -c upgradable)
+UPDATES=$(yay -Qqu | tr -s ' ' | wc -l)
 
 if [ $UPDATES -gt 0 ]; then
   echo " $UPDATES"
