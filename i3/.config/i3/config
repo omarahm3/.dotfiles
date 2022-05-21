@@ -88,6 +88,12 @@ bindsym $mod+n exec ~/.local/bin/wifi
 ## Launch // Dropdown terminal // <> q ##
 bindsym $mod+q [instance="dropdown"] scratchpad show; [instance="dropdown"] move position center
 
+## Launch // Tmux terminal // <> Shift+v ##
+bindsym $mod+Shift+v exec ~/.local/bin/i3relativewindow $helper_terminal.floating.rightside.instance\
+  100 100 \
+  $helper_terminal.floating.rightside.width $helper_terminal.floating.rightside.height \
+  2>&1 | tee ~/.i3relativewindow.log
+
 ###############################################################################
 # Window and Workspace Navigation
 ###############################################################################
@@ -460,9 +466,19 @@ for_window [class="Bluetooth-sendto" instance="bluetooth-sendto"] floating enabl
 for_window [class="Pamac-manager"] floating enable
 for_window [window_role="About"] floating enable
 
+# set floating terminal
 for_window [instance="dropdown"] floating enable, border 1px
 for_window [instance="dropdown"] resize set 900 400
-for_window [instance="dropdown"] move scratchpad, scratchpad show
+for_window [instance="dropdown"] move scratchpad
+
+# set floating right side terminal
+set $helper_terminal.floating.rightside.instance general_rightside
+set $helper_terminal.floating.rightside.width 800
+set $helper_terminal.floating.rightside.height 1080
+
+for_window [instance="general_rightside"] floating enable, border 1px
+for_window [instance="general_rightside"] resize set $helper_terminal.floating.rightside.width $helper_terminal.floating.rightside.height
+for_window [instance="general_rightside"] move scratchpad
 
 ###############################################################################
 # i3 Colors and Fonts
@@ -613,3 +629,6 @@ exec --no-startup-id sleep 2 && nitrogen --restore
 
 # Dropdown terminal
 exec --no-startup-id kitty --class dropdown -e /usr/bin/fish
+
+# Right side terminal
+exec --no-startup-id kitty --class general_rightside -e /usr/bin/fish
