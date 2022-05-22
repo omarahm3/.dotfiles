@@ -305,7 +305,7 @@ bindsym $mod+Ctrl+r restart
 bindsym $mod+Shift+b exec ~/.config/i3/scripts/powermenu
 
 ## Session // Lock Screen // <> Escape ##
-set $i3-wm.program.picture.lock i3lock -i  ~/.config/i3/i3-lock-screen.png -p default|win -t # Lock using a picture
+#set $i3-wm.program.picture.lock i3lock -i  ~/.config/i3/i3-lock-screen.png -p default|win -t # Lock using a picture
 set $i3-wm.program.blur.lock i3lock -i  ~/.config/i3/scripts/blur-lock # Lock by blurring screen
 bindsym $mod+Escape exec $i3-wm.program.blur.lock
 
