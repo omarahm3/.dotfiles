@@ -5,6 +5,7 @@ set PATH /home/mrgeek/.config/composer/vendor/bin $PATH
 set PATH /home/mrgeek/.cargo/bin $PATH
 set PATH /home/mrgeek/.gem/ruby/2.7.0/bin $PATH
 set PATH /home/mrgeek/n/bin $PATH
+set PATH /home/mrgeek/.luarocks/bin $PATH
 
 source ~/.config/fish/private.fish
 
