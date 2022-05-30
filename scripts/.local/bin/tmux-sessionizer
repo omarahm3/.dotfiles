@@ -6,7 +6,7 @@ projects=$(tr -s '\n' ' ' < ~/.tmux/.tmux-projects | xargs)
 if [[ $# -eq 1 ]]; then
     selected=$1
 else
-    selected=$(eval find "$projects" -mindepth 1 -maxdepth 1 -type d | fzf)
+    selected=$(eval find "$projects" -mindepth 1 -maxdepth 1 -type d | fzf --cycle --reverse --color=hl:2)
 fi
 
 if [[ -z $selected ]]; then
