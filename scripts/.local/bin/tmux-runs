@@ -1,0 +1,13 @@
+#!/bin/bash
+
+selected=$(fzf < ~/.tmux-scripts/common-commands)
+
+if [[ -z $selected ]]; then
+    exit 0
+fi
+
+pretty_name=$(echo "$selected" | cut -d ' ' -f 1)
+
+tmux-windowizer "$pretty_name"
+tmux kill-window -t "$selected"
+tmux-windowizer "$pretty_name" "$selected && tmux display-message '$selected is done'"

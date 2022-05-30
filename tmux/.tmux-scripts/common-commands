@@ -1,0 +1,14 @@
+yarn test
+yarn init -y
+npm run test
+npm run lint
+npm run lint-fix
+npm outdated
+npx ncu -u
+jest
+npm i
+git init
+git status
+git pull
+go run .
+date
