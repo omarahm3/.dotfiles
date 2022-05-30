@@ -13,4 +13,4 @@ SESSION_NAME=${ARGS[0]}
 WINDOW_ID=${ARGS[1]}
 PANE_ID=${ARGS[2]}
 
-tmux select-pane -t $PANE_ID && tmux select-window -t $WINDOW_ID && tmux switch-client -t $SESSION_NAME
+tmux select-pane -t "$PANE_ID" && tmux select-window -t "$WINDOW_ID"j && tmux switch-client -t "$SESSION_NAME"
