@@ -12,3 +12,9 @@ git status
 git pull
 go run .
 date
+docker compose build
+docker compose up -d
+docker compose ps -a
+docker ps -a
+docker stop (docker ps -aq)
+docker rm (docker ps -aq)
