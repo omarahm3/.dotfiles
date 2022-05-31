@@ -10,4 +10,4 @@ pretty_name=$(echo "$selected" | cut -d ' ' -f 1)
 
 tmux-windowizer "$pretty_name"
 tmux kill-window -t "$selected"
-tmux-windowizer "$pretty_name" "$selected && tmux display-message '$selected is done'"
+tmux-windowizer "$pretty_name" "$selected && notify-send -a tmux \"'$selected' is done\""
