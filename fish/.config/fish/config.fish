@@ -3,9 +3,9 @@ set PATH /home/mrgeek/.local/bin $PATH
 set PATH /home/mrgeek/go/bin $PATH
 set PATH /home/mrgeek/.config/composer/vendor/bin $PATH
 set PATH /home/mrgeek/.cargo/bin $PATH
-set PATH /home/mrgeek/.gem/ruby/2.7.0/bin $PATH
 set PATH /home/mrgeek/n/bin $PATH
 set PATH /home/mrgeek/.luarocks/bin $PATH
+set PATH /home/mrgeek/.local/share/gem/ruby/3.0.0/bin $PATH
 
 source ~/.config/fish/private.fish
 
