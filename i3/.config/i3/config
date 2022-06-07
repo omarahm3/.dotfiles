@@ -321,7 +321,7 @@ set $i3-wm.program.files /usr/bin/thunar
 bindsym $mod+Shift+n exec $i3-wm.program.files
 
 ## Launch // Keybindings hint // <F1> ##
-bindsym F1 exec ~/.config/i3/scripts/keyhint-2
+bindsym $mod+Shift+m exec ~/.config/i3/scripts/keyhint-2
 
 # Backlight control
 bindsym XF86MonBrightnessUp exec xbacklight +5 && notify-send "Brightness - $(xbacklight -get | cut -c1-2)%"
