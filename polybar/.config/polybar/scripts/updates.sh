@@ -14,7 +14,7 @@ if [ -z "$GET_UPDATES" ]; then
   exit 0
 fi
 
-UPDATES=$(echo $GET_UPDATES | wc -l)
+UPDATES=$(echo $GET_UPDATES | wc -w)
 
 if [ $UPDATES -gt 0 ]; then
   echo " $UPDATES"
