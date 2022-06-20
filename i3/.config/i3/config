@@ -88,7 +88,7 @@ bindsym $mod+n exec ~/.local/bin/wifi
 ## Launch // Dropdown terminal // <> q ##
 bindsym $mod+q [instance="dropdown"] scratchpad show; [instance="dropdown"] move position center
 
-## Launch // Tmux terminal // <> Shift+v ##
+## Launch // Notes // <> Shift+v ##
 bindsym $mod+Shift+v exec ~/.local/bin/i3relativewindow $helper_terminal.floating.rightside.instance\
   100 100 \
   $helper_terminal.floating.rightside.width $helper_terminal.floating.rightside.height \
@@ -631,4 +631,4 @@ exec --no-startup-id sleep 2 && nitrogen --restore
 exec --no-startup-id kitty --class dropdown -e /usr/bin/fish
 
 # Right side terminal
-exec --no-startup-id kitty --class general_rightside fish -c "tmux new-session -A -s General"
+exec --no-startup-id kitty --class general_rightside fish -c "journal"

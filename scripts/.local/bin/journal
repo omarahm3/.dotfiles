@@ -1,0 +1,37 @@
+#!/usr/bin/env bash
+## Ripped from https://gist.github.com/thcipriani/7efb15b2057fe6348b45df26a3e3c479
+
+set -euo pipefail
+
+DATE=$(date --iso-8601=date)
+DATETIME=$(date --iso-8601=seconds)
+
+BASE="$HOME/.brain"
+WEBROOT="$HOME/public_html/brain"
+
+mkdir -p "$BASE"
+mkdir -p "$WEBROOT"
+
+DAILY="$BASE/note.$DATE.md"
+DAILY_HTML="$WEBROOT/note.$DATE.html"
+
+has?() {
+  command -v "$@" &> /dev/null
+}
+
+insert() {
+  echo "$@" >> "$DAILY"
+}
+
+if [ ! -f "$DAILY" ]; then
+  insert "---"
+  insert "title: ${DATETIME}"
+  insert "created: ${DATETIME}"
+  insert "---"
+
+  insert ""
+fi
+
+nvim -c "TZAtaraxis" "$DAILY"
+
+has? pandoc && pandoc -s -f markdown -t html5 -o "$DAILY_HTML" "$DAILY" || :
