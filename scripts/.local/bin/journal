@@ -32,6 +32,6 @@ if [ ! -f "$DAILY" ]; then
   insert ""
 fi
 
-nvim -c "TZAtaraxis" "$DAILY"
+nvim -c "TZMinimalist" "$DAILY"
 
 has? pandoc && pandoc -s -f markdown -t html5 -o "$DAILY_HTML" "$DAILY" || :
