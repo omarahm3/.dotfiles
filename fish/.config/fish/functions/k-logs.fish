@@ -1,7 +1,16 @@
 # Thanks to @Peter for some of the amazing tricks here
 function k-logs --description 'k-logs <context> <resource_name>'
   set -l POD (k-getpod $argv[1] $argv[2])
-  set -l BASE_COMMAND "kubectl --kubeconfig='/home/mrgeek/.kube/$argv[1].yaml' -n $argv[1]"
+  set -l BASE_COMMAND "kubectl --kubeconfig='/home/mrgeek/.kube/$argv[1].yaml'"
+
+  # Add namespace if trying to access some clusters
+  switch $argv[1]
+    case 'dev*'
+      set BASE_COMMAND "$BASE_COMMAND -n $argv[1]"
+    case '*'
+      set BASE_COMMAND "$BASE_COMMAND"
+  end
+
   set -l APP (eval "$BASE_COMMAND get pod $POD -o yaml | grep -i app: | cut -d ':' -f 2")
   set -l APP (string trim $APP)
   set -l COMMAND "$BASE_COMMAND logs --tail=-1 -l app=$APP $argv[3..-1]"
