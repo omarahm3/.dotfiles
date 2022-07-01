@@ -18,3 +18,12 @@ docker compose ps -a
 docker ps -a
 docker stop (docker ps -aq)
 docker rm (docker ps -aq)
+kubectl get pod
+kubectl exec -it (k-getpod $CURRENT_KUBE_CLUSTER api) -- bash
+kubectl describe po/(k-getpod $CURRENT_KUBE_CLUSTER api) | grep -i image
+kubectl describe po/(k-getpod $CURRENT_KUBE_CLUSTER translator) | grep -i image
+k-logs $CURRENT_KUBE_CLUSTER 360 -f
+k-logs $CURRENT_KUBE_CLUSTER translator -f
+k-logs $CURRENT_KUBE_CLUSTER umi -f
+k-logs $CURRENT_KUBE_CLUSTER agent-controller -f
+k-logs $CURRENT_KUBE_CLUSTER api -f
