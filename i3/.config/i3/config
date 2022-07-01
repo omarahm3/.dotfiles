@@ -633,3 +633,7 @@ exec --no-startup-id kitty --class dropdown -e /usr/bin/fish
 
 # Right side terminal
 exec --no-startup-id kitty --class general_rightside fish -c "journal"
+
+# Start tmux work and development servers
+exec --no-startup-id tmux -Ldevelopment new -s General -d
+exec --no-startup-id tmux new -s General -d
