@@ -1,14 +1,20 @@
 # Thanks to @Peter for some of the amazing tricks here
 function k-logs --description 'k-logs <context> <resource_name>'
   set -l POD (k-getpod $argv[1] $argv[2])
-  set -l BASE_COMMAND "kubectl --kubeconfig='/home/mrgeek/.kube/$argv[1].yaml'"
 
-  # Add namespace if trying to access some clusters
-  switch $argv[1]
-    case 'dev*'
-      set BASE_COMMAND "$BASE_COMMAND -n $argv[1]"
-    case '*'
-      set BASE_COMMAND "$BASE_COMMAND"
+  if string match -q "null" "$POD"
+    echo "Pod was not found"
+    return 1
+  end
+
+  # TODO Same checks do exist on multiple scripts, move to a common function
+  if begin string match -q "dev*" "$argv[1]"; and string match -q "dev-eks" "$CURRENT_KUBE_CLUSTER"; end
+    set BASE_COMMAND "kubectl -n $argv[1]"
+  else if begin string match -q "dev*" "$argv[1]"; and not string match -q "dev-eks" "$CURRENT_KUBE_CLUSTER"; end
+    echo "Current cluster is not right [$CURRENT_KUBE_CLUSTER]"
+    return 1
+  else
+    set BASE_COMMAND "kubectl"
   end
 
   set -l APP (eval "$BASE_COMMAND get pod $POD -o yaml | grep -i app: | cut -d ':' -f 2")
