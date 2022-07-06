@@ -1,9 +1,20 @@
 function k-getpod --description 'k-getpod <context> <resource_name>'
-  set -l KUBE_OUTPUT (kubectl --kubeconfig="/home/mrgeek/.kube/$argv[1].yaml" get pod -n $argv[1] -o json 2>&1)
+  # Check if this is a dev context, and the current logged in cluster is dev-eks
+  # in this case we need to use it as a namespace
+  if begin string match "dev*" "$argv[1]" 2>&1 1>/dev/null; and string match "dev-eks" "$CURRENT_KUBE_CLUSTER" 2>&1 1>/dev/null; end
+    set KUBE_OUTPUT (kubectl -n "$argv[1]" get pod -o json 2>&1)
+  else if begin string match "dev*" "$argv[1]" 2>&1 1>/dev/null; and not string match "dev-eks" "$CURRENT_KUBE_CLUSTER" 2>&1 1>/dev/null; end
+    echo "Current cluster is not right [$CURRENT_KUBE_CLUSTER]"
+    return 1
+  else
+    set KUBE_OUTPUT (kubectl -n default get pod -o json 2>&1)
+  end
+
   set -l IS_EMPTY (echo $KUBE_OUTPUT | jq -r '.items[]' | string trim)
 
   if test -z "$IS_EMPTY"
-    set KUBE_OUTPUT (kubectl --kubeconfig="/home/mrgeek/.kube/$argv[1].yaml" get pod --all-namespaces -o json 2>&1)
+    echo "No pods returned"
+    return 1
   end
 
   set -l COMMAND_STRING (echo $KUBE_OUTPUT | jq -r "[.items[] | select(.metadata.name | contains(\"$argv[2..-1]\"))][0]")
