@@ -1,9 +1,9 @@
 function k-getpod --description 'k-getpod <context> <resource_name>'
   # Check if this is a dev context, and the current logged in cluster is dev-eks
   # in this case we need to use it as a namespace
-  if begin string match "dev*" "$argv[1]" 2>&1 1>/dev/null; and string match "dev-eks" "$CURRENT_KUBE_CLUSTER" 2>&1 1>/dev/null; end
+  if begin string match -q "dev*" "$argv[1]"; and string match -q "dev-eks" "$CURRENT_KUBE_CLUSTER"; end
     set KUBE_OUTPUT (kubectl -n "$argv[1]" get pod -o json 2>&1)
-  else if begin string match "dev*" "$argv[1]" 2>&1 1>/dev/null; and not string match "dev-eks" "$CURRENT_KUBE_CLUSTER" 2>&1 1>/dev/null; end
+  else if begin string match -q "dev*" "$argv[1]"; and not string match -q "dev-eks" "$CURRENT_KUBE_CLUSTER"; end
     echo "Current cluster is not right [$CURRENT_KUBE_CLUSTER]"
     return 1
   else
