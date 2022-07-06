@@ -1,21 +1,16 @@
 #!/bin/bash
 
-KUBE_HOME="$HOME/.kube"
-IGNORE_PATTERN="cache|config|config_bk"
-
-cluster=$(ls "$KUBE_HOME" | grep -v -E "$IGNORE_PATTERN" | sed -e "s/.yaml//" | fzf --cycle --reverse)
+cluster=$(tsh kube ls -f json | jq -r '.[].kube_cluster_name' | fzf --cycle --reverse)
 
 if [ -z "$cluster" ]; then
   exit 0
 fi
-
-cluster_path="$KUBE_HOME/$cluster.yaml"
 
 # Set the current cluster globally on both bash and fish
 export CURRENT_KUBE_CLUSTER="$cluster"
 fish -c "set -Ux CURRENT_KUBE_CLUSTER $cluster"
 clear
 
-cp "$cluster_path" "$KUBE_HOME/config"
+tsh kube login "$cluster"
 
 echo "Switched to [$cluster]"
