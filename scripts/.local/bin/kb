@@ -1,6 +1,7 @@
 #!/bin/bash
 
-cluster=$(tsh kube ls -f json | jq -r '.[].kube_cluster_name' | fzf --cycle --reverse)
+clusters=$(tsh kube ls -f json | jq -r '.[].kube_cluster_name')
+cluster=$(echo "$clusters" | fzf --cycle --reverse)
 
 if [ -z "$cluster" ]; then
   exit 0
