@@ -6,6 +6,9 @@ function k-getpod --description 'k-getpod <context> <resource_name>'
   else if begin string match -q "dev*" "$argv[1]"; and not string match -q "dev-eks" "$CURRENT_KUBE_CLUSTER"; end
     echo "Current cluster is not right [$CURRENT_KUBE_CLUSTER]"
     return 1
+  ## Check if this is called by k-portforward in this case use port-forward namespace
+  else if string match -q "mongo*" "$argv[2]"
+    set KUBE_OUTPUT (kubectl -n port-forward get pod -o json 2>&1)
   else
     set KUBE_OUTPUT (kubectl -n default get pod -o json 2>&1)
   end
