@@ -305,6 +305,9 @@ bindsym $mod+Ctrl+r restart
 ## Session // Power Menu // <><Shift> b ##
 bindsym $mod+Shift+b exec ~/.config/i3/scripts/powermenu
 
+## Session // Bitwarden // <><Shift> p ##
+bindsym $mod+p exec ~/.config/i3/scripts/bitwarden
+
 ## Session // Lock Screen // <> Escape ##
 #set $i3-wm.program.picture.lock ~/.config/i3/i3-lock-screen.png -p default|win -t # Lock using a picture
 set $i3-wm.program.blur.lock ~/.config/i3/scripts/blur-lock # Lock by blurring screen
@@ -347,7 +350,7 @@ bindsym XF86AudioNext exec playerctl next
 bindsym XF86AudioPrev exec playerctl previous
 
 ## Launch // Redirect sound to headphones // <> p ##
-bindsym $mod+p exec /usr/local/bin/switch-audio-port
+# bindsym $mod+p exec /usr/local/bin/switch-audio-port
 
 ## Launch // Power profiles menu switcher // <><Shift> p ##
 bindsym $mod+Shift+p exec ~/.config/i3/scripts/power-profiles
