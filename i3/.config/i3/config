@@ -306,7 +306,10 @@ bindsym $mod+Ctrl+r restart
 bindsym $mod+Shift+b exec ~/.config/i3/scripts/powermenu
 
 ## Session // Bitwarden // <><Shift> p ##
-bindsym $mod+p exec ~/.config/i3/scripts/bitwarden
+bindsym $mod+p exec ~/.config/i3/scripts/security bw
+
+## Session // Authy // <><Shift> p ##
+bindsym $mod+Shift+a exec "~/.config/i3/scripts/security gth &> /tmp/out"
 
 ## Session // Lock Screen // <> Escape ##
 #set $i3-wm.program.picture.lock ~/.config/i3/i3-lock-screen.png -p default|win -t # Lock using a picture

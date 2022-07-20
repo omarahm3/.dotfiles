@@ -1,0 +1,32 @@
+#!/usr/bin/env bash
+
+option=$1
+
+case $option in
+  bw)
+    items=$(~/.local/bin/bw list items | jq -r "map({ (.name|tostring): .login.password })|add")
+    key=$(echo "$items" | jq -r ".|keys[]" | rofi -theme ~/.config/rofi/themes/catppuccin.rasi -dmenu -markup-rows -i -p "Domain" -cycle -sorting-method fzf -sort)
+    password=$(echo "$items" | jq ".\"$key\"")
+
+    if [ "$password" == "null" ]; then
+      exit 0
+    fi
+
+    password=${password:1:-1}
+    echo -n "$password" | xclip -selection clipboard
+    ;;
+  gth)
+    items=$(~/go/bin/gauth | tr -s ' ' | cut -d' ' -f1 | sed -e '$d' -e '1d')
+    selected=$(echo "$items" | rofi -theme ~/.config/rofi/themes/catppuccin.rasi -dmenu -markup-rows -i -p "Account" -cycle -sorting-method fzf -sort)
+    key=$(~/go/bin/gauth | grep "$selected" | tr -s ' ' | cut -d' ' -f3)
+
+    if [ "$key" == "null" ]; then
+      exit 0
+    fi
+    
+    echo -n "$key" | xclip -selection clipboard
+    ;;
+  *)
+    echo -n "WHAT!?"
+    ;;
+esac
