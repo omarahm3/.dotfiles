@@ -2,9 +2,11 @@
 
 option=$1
 
+B_SESSION=$(fish -c 'echo $BW_SESSION' | tail -n1)
+
 case $option in
   bw)
-    items=$(~/.local/bin/bw list items | jq -r "map({ (.name|tostring): .login.password })|add")
+    items=$(~/.local/bin/bw list items --session "$B_SESSION" | jq -r "map({ (.name|tostring): .login.password })|add")
     key=$(echo "$items" | jq -r ".|keys[]" | rofi -theme ~/.config/rofi/themes/catppuccin.rasi -dmenu -markup-rows -i -p "Domain" -cycle -sorting-method fzf -sort)
     password=$(echo "$items" | jq ".\"$key\"")
 
