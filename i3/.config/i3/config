@@ -1,3 +1,4 @@
+# vim: set ft=arch:
 # set the mod key to the winkey:
 set $mod Mod4
 
@@ -58,7 +59,7 @@ bindsym --release $mod+x exec --no-startup-id /usr/bin/flameshot gui
 ###############################################################################
 
 ## Launch // Terminal // <> Enter ##
-bindsym $mod+Return exec /usr/bin/kitty
+bindsym $mod+Return exec /usr/local/bin/st
 
 ## Launch // Browser // <><Shift> Enter ##
 bindsym $mod+Shift+Return exec gtk-launch $(xdg-settings get default-web-browser)
