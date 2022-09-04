@@ -1,16 +1,12 @@
-(defwindow powermenu
-    :geometry (geometry :x "93%"
-                        :y "178px" ; 25%
-                        :width "98px"
-                        :height "100px")
-    (powermenu))
+; includes:
+;widgets
+(include "widgets.yuck")
 
-(defwidget powermenu []
-    (box :class "powermenu" :orientation "v"
-        (button :onclick "systemctl poweroff" "")
-        (button :onclick "systemctl reboot" "")
-        (button :onclick "bspc quit" "")
-        (button :onclick "sh ./scripts/lockScreen" "")
-        (button :onclick "systemctl hybrid-sleep" "")
-    )
-)
+;; Calendar Windows ;;
+(defwindow calendar
+  :geometry (geometry :x "-19px" 
+             :y "50px" 
+             :width "270px" 
+             :height "60px"
+             :anchor "top right")
+ (cal))
