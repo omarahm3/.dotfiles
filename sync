@@ -1,0 +1,9 @@
+#!/bin/bash
+# vim:ft=bash
+
+if [[ -z $1 ]]; then
+  echo "you must enter a directory to sync"
+	exit 1
+fi
+
+stow -vRt ~ "$1"
