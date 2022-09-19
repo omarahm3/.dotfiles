@@ -7,6 +7,10 @@ TARGET_SPEC="#{session_name}:#{window_id}:#{pane_id}"
 
 PANE=$(tmux list-panes -a -F "$TARGET_SPEC $LIST_DATA" | $FZF_COMMAND)
 
+if [[ -z $PANE ]]; then
+	exit 0
+fi
+
 ARGS=(${PANE//:/ })
 
 SESSION_NAME=${ARGS[0]}
