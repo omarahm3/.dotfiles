@@ -6,4 +6,13 @@ if [[ -z $1 ]]; then
 	exit 1
 fi
 
-stow -vRt ~ "$1"
+
+case "$1" in
+  fonts)
+    stow -vRt ~ "$1"
+    fc-cache -fv
+    ;;
+  *)
+    stow -vRt ~ "$1"
+    ;;
+esac
