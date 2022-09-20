@@ -85,6 +85,11 @@ bindsym $mod+Ctrl+space exec $i3-wm.program.launcher.window
 set $i3-wm.program.file_search rofi -show find -modi find:/usr/share/rofi/modi/finder.sh
 bindsym $mod+Mod1+space exec $i3-wm.program.file_search
 
+
+## Launch // Calculator // <><Shift> c ##
+set $i3-wm.program.calculator rofi -show calc -modi calc -theme ~/.config/rofi/themes/calculator.rasi
+bindsym $mod+Shift+c exec $i3-wm.program.calculator
+
 ## Launch // Wifi network // <> n ##
 bindsym $mod+n exec ~/.local/bin/wifi
 
@@ -299,7 +304,7 @@ bindsym $mod+Shift+q [con_id="__focused__"] kill
 bindsym $mod+Mod1+q [con_id="__focused__"] exec --no-startup-id kill -9 $(xdotool getwindowfocus getwindowpid)
 
 ## Session // Reload i3 Config // <><Shift> c ##
-bindsym $mod+Shift+c reload
+bindsym $mod+Shift+r reload
 
 ## Session // Restart i3 // <><Ctrl> r ##
 bindsym $mod+Ctrl+r restart
