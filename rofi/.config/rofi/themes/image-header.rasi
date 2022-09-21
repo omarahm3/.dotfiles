@@ -166,6 +166,18 @@ element selected.active {
     background-color:            @urgent;
     text-color:                  @active;
 }
+element.alternate.normal {
+    background-color:            inherit;
+    text-color:                  inherit;
+}
+element.alternate.urgent {
+    background-color: @urgent;
+    text-color:       @foreground;
+}
+element.alternate.active {
+    background-color: @urgent;
+    text-color:       @foreground;
+}
 element-icon {
     background-color:            transparent;
     text-color:                  inherit;
