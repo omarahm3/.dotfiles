@@ -43,8 +43,8 @@ window {
 	anchor:		 east;
 	height:		 85%;
     //y-offset:    24px;
-    x-offset:    12px;
-	width:		 20%;
+    x-offset:    -16px;
+	width:		 25%;
 	orientation: horizontal;
 	children:	 [mainbox];
     border-radius: 12px;
