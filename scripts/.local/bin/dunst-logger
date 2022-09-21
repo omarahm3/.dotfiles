@@ -3,9 +3,18 @@
 
 crunch_appname=$(echo "$1" | sed '/^$/d')
 crunch_summary=$(echo "$2" | sed '/^$/d' | tr $'\n' ' ')
-crunch_body=$(echo "$3" | sed '/^$/d' | tr $'\n' ' ')
+crunch_body=$(echo "$3" | sed '/^$/d' | tr $'\n' ' ' | sed -e "s/<[^>]*>.*<\/[^>]*> //g")
+crunch_apptype=$(echo "$3" | awk -vFS="<.[^>]*>" '{for(i=2;i<=NF;i+=2)print $i}')
 crunch_icon=$(echo "$4" | sed '/^$/d')
 crunch_urgency=$(echo "$5" | sed '/^$/d')
 timestamp=$(date +"%I:%M %p")
 
-echo -en "$timestamp\n$crunch_urgency\n$crunch_icon\n$crunch_body\n$crunch_summary\n$crunch_appname\n" >> /tmp/dunstlog
+if [[ "$crunch_appname" == "Google Chrome" ]]; then
+  if [[ $crunch_apptype == *"whatsapp"* ]]; then
+    crunch_icon="whatsapp"
+  else
+    crunch_icon="googlechrome"
+  fi
+fi
+
+echo -en "$timestamp\n$crunch_urgency\n$crunch_icon\n$crunch_body\n$crunch_summary\n$crunch_appname\n" >>/tmp/dunstlog
