@@ -69,23 +69,14 @@ set $rofiTheme /home/mrgeek/.config/rofi/config.rasi
 
 ## Launch // Application // <> Space ##
 # set $i3-wm.program.launcher.app rofi -no-lazy-grab -show drun -modi drun -theme $rofiTheme
-set $i3-wm.program.launcher.catppuccin.app rofi -show drun -config ~/.config/rofi/themes/catppuccin.rasi
-# set $i3-wm.program.launcher.headerImage.app rofi -show drun -config ~/.config/rofi/themes/image-header.rasi
-bindsym $mod+space exec $i3-wm.program.launcher.catppuccin.app
-bindsym $mod+d exec $i3-wm.program.launcher.catppuccin.app
-
-## Launch // Command // <><Shift> Space ##
-set $i3-wm.program.launcher.cmd rofi -no-lazy-grab -show drun -modi drun -theme $rofiTheme
-bindsym $mod+Shift+space exec $i3-wm.program.launcher.cmd
-
-## Navigate // Window by Name // <><Ctrl> Space ##
-set $i3-wm.program.launcher.window rofi -no-lazy-grab -show drun -modi drun -theme $rofiTheme
-bindsym $mod+Ctrl+space exec $i3-wm.program.launcher.window
+# set $i3-wm.program.launcher.catppuccin.app rofi -show drun -config ~/.config/rofi/themes/catppuccin.rasi
+set $i3-wm.program.launcher.headerImage.app rofi -show drun -config ~/.config/rofi/themes/image-header.rasi
+bindsym $mod+space exec $i3-wm.program.launcher.headerImage.app
+bindsym $mod+d exec $i3-wm.program.launcher.headerImage.app
 
 ## Launch // File Search // <><Alt> Space ##
-set $i3-wm.program.file_search rofi -show find -modi find:/usr/share/rofi/modi/finder.sh
+set $i3-wm.program.file_search rofi -show filebrowser -theme ~/.config/rofi/themes/image-header.rasi
 bindsym $mod+Mod1+space exec $i3-wm.program.file_search
-
 
 ## Launch // Calculator // <><Shift> c ##
 set $i3-wm.program.calculator rofi -show calc -modi calc -theme ~/.config/rofi/themes/calculator.rasi

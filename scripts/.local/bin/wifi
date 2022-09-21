@@ -1,6 +1,5 @@
-## Entirely from: https://github.com/ericmurphyxyz/rofi-wifi-menu/blob/master/rofi-wifi-menu.sh
-
 #!/usr/bin/env bash
+## Entirely from: https://github.com/ericmurphyxyz/rofi-wifi-menu/blob/master/rofi-wifi-menu.sh
 
 notify-send "Getting list of available Wi-Fi networks..."
 # Get a list of available wifi connections and morph it into a nice-looking list
@@ -14,7 +13,7 @@ elif [[ "$connected" =~ "disabled" ]]; then
 fi
 
 # Use rofi to select wifi network
-chosen_network=$(echo -e "$toggle\n$wifi_list" | uniq -u | rofi -theme ~/.config/rofi/rofidmenu.rasi -dmenu -i -selected-row 1 -p "Choose wifi " )
+chosen_network=$(echo -e "$toggle\n$wifi_list" | uniq -u | rofi -theme ~/.config/rofi/wifi.rasi -dmenu -i -selected-row 1 -p "Choose wifi " )
 # Get name of connection
 chosen_id=$(echo "${chosen_network:3}" | xargs)
 
