@@ -183,9 +183,9 @@ set $i3-wm.binding.move_right Shift+l
 set $i3-wm.binding.move_up Shift+k
 set $i3-wm.binding.move_down Shift+j
 bindsym $mod+$i3-wm.binding.move_left move left
-bindsym $mod+$i3-wm.binding.move_right move down
+bindsym $mod+$i3-wm.binding.move_right move right
 bindsym $mod+$i3-wm.binding.move_up move up
-bindsym $mod+$i3-wm.binding.move_down move right
+bindsym $mod+$i3-wm.binding.move_down move down
 
 ## Modify // Containing Workspace // <><Ctrl><Shift> ↑ ↓ ← → ##
 bindsym $mod+Ctrl+Shift+Left move workspace to output left
@@ -195,9 +195,9 @@ bindsym $mod+Ctrl+Shift+Right move workspace to output right
 
 ## Modify // Containing Workspace // <><Ctrl><Shift> k j h l ##
 bindsym $mod+Ctrl+Shift+h move workspace to output left
-bindsym $mod+Ctrl+Shift+l move workspace to output down
+bindsym $mod+Ctrl+Shift+l move workspace to output right
 bindsym $mod+Ctrl+Shift+k move workspace to output up
-bindsym $mod+Ctrl+Shift+j move workspace to output right
+bindsym $mod+Ctrl+Shift+j move workspace to output down
 
 ## Modify // Vertical Window Orientation // <> v ##
 bindsym $mod+v split vertical
@@ -442,6 +442,7 @@ set $i3-wm.window.border.size 1
 set $i3-wm.floatingwindow.border.size 1
 default_border pixel $i3-wm.window.border.size
 default_floating_border pixel $i3-wm.floatingwindow.border.size
+for_window [class="^.*"] border pixel $i3-wm.window.border.size
 
 # Specify the distance between windows in pixels. (i3-gaps)
 set $i3-wm.gaps.inner.size 6
