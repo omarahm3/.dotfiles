@@ -1,0 +1,16 @@
+[user]
+  email = me@mrg.sh
+  name = Omar Ahmed
+[init]
+  defaultBranch = master
+[pull]
+  rebase = false
+[core]
+  editor = nvim
+[remote "origin"]
+  proxy =
+[gc]
+  reflogExpire = 200
+  reflogExpireUnreachable = 90
+[url "ssh://git@github.com/"]
+	insteadOf = https://github.com/
