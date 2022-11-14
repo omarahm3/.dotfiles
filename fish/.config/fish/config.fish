@@ -59,7 +59,7 @@ if test -x (command -v fw)
 end
 
 alias cd z
-
+alias vim lvim
 alias twork 'tmux a'
 alias tdev 'tmux -Ldevelopment a'
 
@@ -68,3 +68,4 @@ set -Ux FZF_DEFAULT_OPTS "--color=bg+:#302D41,bg:#1E1E2E,spinner:#F8BD96,hl:#F28
 
 set -e EDITOR
 set -Ux EDITOR nvim
+set -q GHCUP_INSTALL_BASE_PREFIX[1]; or set GHCUP_INSTALL_BASE_PREFIX $HOME ; set -gx PATH $HOME/.cabal/bin $PATH /home/mrgeek/.ghcup/bin # ghcup-env
