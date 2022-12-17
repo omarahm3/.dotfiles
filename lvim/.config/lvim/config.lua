@@ -1,3 +1,11 @@
+local isRosePine, rosePine = pcall(require, 'rose-pine')
+
+if isRosePine then
+  rosePine.setup({
+    dark_variant = 'moon',
+  })
+end
+
 --[[
 lvim is the global options object
 
@@ -47,7 +55,7 @@ local options = {
 
 local g_options = {
   tokyonight_style = "night", -- the main variant of tokyonight theme
-  catppuccin_flavour = "mocha",
+  catppuccin_flavour = "macchiato",
   material_style = "oceanic", -- the main variant of material theme
 }
 
@@ -74,7 +82,7 @@ vim.o.foldlevel = 99
 -- general
 lvim.log.level = "warn"
 lvim.format_on_save.enabled = true
-lvim.colorscheme = "catppuccin"
+lvim.colorscheme = "rose-pine"
 
 -- keymappings [view all the defaults by pressing <leader>Lk]
 lvim.leader = "space"
@@ -82,6 +90,7 @@ lvim.leader = "space"
 -- add your own keymapping
 local git_mappings = lvim.builtin.which_key.mappings["g"]
 local find_mappings = lvim.builtin.which_key.mappings["s"]
+local telescope_mappings = lvim.builtin.which_key.mappings["l"]
 
 local mappings = {
   globalNormal = {
@@ -97,6 +106,7 @@ local mappings = {
     ["p"] = { '"_dP', "Keep what you are pasting in the clipboard register" },
   },
   normal = {
+    ["u"] = { ':UndotreeToggle<CR>', "Undo tree" },
     ["x"] = { ':BufferKill<CR>', "Close current buffer" },
     ["f"] = vim.tbl_deep_extend("force", find_mappings, {
       w = { ":Telescope live_grep<CR>", "Text" },
@@ -108,8 +118,24 @@ local mappings = {
     }),
     ["zR"] = { ":lua require('ufo').openAllFolds", "open all folds" },
     ["zM"] = { ":lua require('ufo').closeAllFolds", "close all folds" },
+    ["l"] = vim.tbl_deep_extend("force", telescope_mappings, {
+      w = {
+        ["l"] = { ":lua require('telescope').extensions.git_worktree.git_worktrees()<CR>", "List Worktree" },
+        ["a"] = { ":lua require('telescope').extensions.git_worktree.create_git_worktree()<CR>", "Create Worktree" }
+      },
+      W = { ":Telescope diagnostics<cr>", "Diagnostics" }
+    }),
+    ["h"] = {
+      ["a"] = { ":lua require('harpoon.mark').add_file()<CR>", "Add file" },
+      ["e"] = { ":lua require('harpoon.ui').toggle_quick_menu()<CR>", "Quick Menu" },
+      ["t"] = { ":lua require('harpoon.ui').nav_file(1)<CR>", "Go to file 1" },
+      ["h"] = { ":lua require('harpoon.ui').nav_file(2)<CR>", "Go to file 2" },
+      ["j"] = { ":lua require('harpoon.ui').nav_file(3)<CR>", "Go to file 3" },
+      ["n"] = { ":lua require('harpoon.ui').nav_file(4)<CR>", "Go to file 4" },
+    }
   },
 }
+
 
 -- Remove some mappings
 lvim.builtin.which_key.mappings["c"] = {}
@@ -129,6 +155,8 @@ end
 for key, value in pairs(mappings.normal) do
   lvim.builtin.which_key.mappings[key] = value
 end
+
+require("telescope").load_extension("git_worktree")
 
 -- Change Telescope navigation to use j and k for navigation and n and p for history in both input and normal mode.
 -- we use protected-mode (pcall) just in case the plugin wasn't loaded yet.
@@ -280,6 +308,11 @@ lvim.plugins = {
   {
     "catppuccin/nvim",
     as = "catppuccin",
+    config = function()
+      require('catppuccin').setup({
+        falvor = "macchiato",
+      })
+    end
   },
   {
     "tpope/vim-fugitive",
@@ -288,6 +321,75 @@ lvim.plugins = {
     "kevinhwang91/nvim-ufo",
     requires = "kevinhwang91/promise-async",
     config = [[ require("ufo").setup() ]],
+  },
+  {
+    "kylechui/nvim-surround",
+    event = "InsertEnter",
+    config = function()
+      require('nvim-surround').setup({
+        keymaps = { -- vim-surround style keymaps
+          -- insert = "ys",
+          -- insert_line = "yss",
+          visual = "S",
+          delete = "ds",
+          change = "cx",
+        },
+        highlight = { -- Highlight before inserting/changing surrounds
+          duration = 0,
+        },
+      })
+    end
+  },
+  {
+    "stevearc/dressing.nvim",
+    requires = {
+      "MunifTanjim/nui.nvim",
+    },
+    config = [[ require("dressing").setup({}) ]],
+  },
+  {
+    "gbprod/cutlass.nvim",
+    config = [[ require("cutlass").setup({}) ]],
+  },
+  {
+    "j-hui/fidget.nvim",
+    config = [[ require("fidget").setup({}) ]],
+  },
+  {
+    "ThePrimeagen/git-worktree.nvim",
+    config = [[ require("git-worktree").setup({}) ]],
+  },
+  {
+    "folke/todo-comments.nvim",
+    requires = "nvim-lua/plenary.nvim",
+    config = function()
+      require("todo-comments").setup {
+        keywords = {
+          FIX = {
+            icon = " ", -- icon used for the sign, and in search results
+            color = "error", -- can be a hex color, or a named color (see below)
+            alt = { "FIXME", "BUG", "FIXIT", "ISSUE" }, -- a set of other keywords that all map to this FIX keywords
+            -- signs = false, -- configure signs for some keywords individually
+          },
+          TODO = { icon = " ", color = "info" },
+          HACK = { icon = " ", color = "warning" },
+          WARN = { icon = " ", color = "warning", alt = { "WARNING", "XXX" } },
+          PERF = { icon = " ", alt = { "OPTIM", "PERFORMANCE", "OPTIMIZE" } },
+          NOTE = { icon = " ", color = "hint", alt = { "INFO" } },
+          TEST = { icon = "⏲ ", color = "test", alt = { "TESTING", "PASSED", "FAILED" } },
+        },
+      }
+    end
+  },
+  {
+    'rose-pine/neovim',
+    as = 'rose-pine',
+  },
+  {
+    'ThePrimeagen/harpoon',
+  },
+  {
+    'mbbill/undotree',
   }
 }
 
