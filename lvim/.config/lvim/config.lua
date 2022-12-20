@@ -2,7 +2,7 @@ local isRosePine, rosePine = pcall(require, 'rose-pine')
 
 if isRosePine then
   rosePine.setup({
-    dark_variant = 'moon',
+    dark_variant = 'main',
   })
 end
 
@@ -99,6 +99,7 @@ local mappings = {
     ["<Tab>"] = { ":BufferLineCycleNext<CR>", "Next" },
     ["<S-Tab>"] = { ":BufferLineCyclePrev<CR>", "Previous" },
     ["<C-p>"] = { ":Telescope find_files<CR>", "Find file" },
+    ["<C-f>"] = { ":silent !tmux neww tmux-sessionizer<CR>", "Find project" },
   },
   vGlobalMappings = {
     ["<S-Tab>"] = { "<gv", "Indent left" },
