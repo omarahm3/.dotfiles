@@ -8,6 +8,7 @@ set PATH /home/mrgeek/.luarocks/bin $PATH
 set PATH /home/mrgeek/.local/share/gem/ruby/3.0.0/bin $PATH
 set PATH /home/mrgeek/.krew/bin $PATH
 set PATH /home/mrgeek/.zx/bin $PATH
+set PATH /home/mrgeek/.fly/bin $PATH
 
 source ~/.config/fish/private.fish
 
@@ -69,3 +70,8 @@ set -Ux FZF_DEFAULT_OPTS "--color=bg+:#302D41,bg:#1E1E2E,spinner:#F8BD96,hl:#F28
 set -e EDITOR
 set -Ux EDITOR nvim
 set -q GHCUP_INSTALL_BASE_PREFIX[1]; or set GHCUP_INSTALL_BASE_PREFIX $HOME ; set -gx PATH $HOME/.cabal/bin $PATH /home/mrgeek/.ghcup/bin # ghcup-env
+
+# pnpm
+set -gx PNPM_HOME "/home/mrgeek/.local/share/pnpm"
+set -gx PATH "$PNPM_HOME" $PATH
+# pnpm end
