@@ -109,6 +109,7 @@ local mappings = {
   normal = {
     ["u"] = { ':UndotreeToggle<CR>', "Undo tree" },
     ["x"] = { ':BufferKill<CR>', "Close current buffer" },
+    ["c"] = { ':silent !chmod +x %<CR>', "Chmowd" },
     ["f"] = vim.tbl_deep_extend("force", find_mappings, {
       w = { ":Telescope live_grep<CR>", "Text" },
       t = {},

@@ -1,0 +1,36 @@
+#!/bin/bash
+
+projects=$(tr -s '*' ' ' <~/.tmux/.tmux-projects)
+
+for i in $projects; do
+  i=$(echo "$i" | sed 's/.$//')
+  i=${i/#\~/$HOME}
+  parents="$parents\n$i"
+done
+
+parents=$(echo "$parents" | sed 's/\\n//')
+
+selected=$(echo -e "$parents" | fzf --cycle --reverse --color=hl:2 --preview="sleep 1; clear; fd --min-depth 1 --max-depth 1 --hidden . {1} -X printf '-> %s\n' {/}" --preview-window 'right:50%')
+
+if [[ -z $selected ]]; then
+  exit 0
+fi
+
+read -r -p "Directory Name: " dir
+
+dir="$selected/$dir"
+mkdir -p "$dir"
+
+selected_name=$(basename "$dir" | tr . _)
+tmux_running=$(pgrep tmux)
+
+if [[ -z $TMUX ]] && [[ -z $tmux_running ]]; then
+	tmux new-session -s "$selected_name" -c "$dir"
+	exit 0
+fi
+
+if ! tmux has-session -t="$selected_name" 2>/dev/null; then
+	tmux new-session -ds "$selected_name" -c "$dir"
+fi
+
+tmux switch-client -t "$selected_name"
