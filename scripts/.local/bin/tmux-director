@@ -1,5 +1,7 @@
 #!/bin/bash
 
+export DISABLE_NERD_FETCH=1
+
 projects=$(tr -s '*' ' ' <~/.tmux/.tmux-projects)
 
 for i in $projects; do
@@ -10,7 +12,7 @@ done
 
 parents=$(echo "$parents" | sed 's/\\n//')
 
-selected=$(echo -e "$parents" | fzf --cycle --reverse --color=hl:2 --preview="sleep 1; clear; fd --min-depth 1 --max-depth 1 --hidden . {1} -X printf '-> %s\n' {/}" --preview-window 'right:50%')
+selected=$(echo -e "$parents" | fzf --cycle --reverse --color=hl:2 --preview="fd --min-depth 1 --max-depth 1 --hidden . {1} -X printf '-> %s\n' {/}" --preview-window 'right:50%')
 
 if [[ -z $selected ]]; then
   exit 0

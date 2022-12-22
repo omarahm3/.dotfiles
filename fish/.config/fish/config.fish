@@ -46,7 +46,9 @@ _execute_command bass source ~/.cargo/env
 
 _execute_command nvm use 14.16.0 >/dev/null 2>&1
 
-_execute_command nerdfetch
+if test -z "$DISABLE_NERD_FETCH"
+  _execute_command nerdfetch
+end
 
 # Generated for envman. Do not edit.
 test -s "$HOME/.config/envman/load.fish"; and source "$HOME/.config/envman/load.fish"
