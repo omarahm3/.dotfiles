@@ -27,3 +27,7 @@ k-logs $CURRENT_KUBE_CLUSTER translator -f
 k-logs $CURRENT_KUBE_CLUSTER umi -f
 k-logs $CURRENT_KUBE_CLUSTER agent-controller -f
 k-logs $CURRENT_KUBE_CLUSTER api -f
+cd /home/mrgeek/ansible-local && ansible-playbook -i hosts -K --tags neovim setup.yaml
+clear && pnpm dev
+clear && pnpm build
+clear && pnpm install
