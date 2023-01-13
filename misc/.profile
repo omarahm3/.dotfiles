@@ -1,7 +1,10 @@
-export TERMINAL=xfce4-terminal
-#export QT_QPA_PLATFORMTHEME=qt5ct
-#export QT_QPA_PLATFORMTHEME=qt6ct
+export MOZ_ENABLE_WAYLAND=1
+export XDG_CURRENT_DESKTOP=sway
+export XDG_SESSION_TYPE=wayland
+export WLR_NO_HARDWARE_CURSORS=1
+#export WLR_NO_HARDWARE_CURSORS=0
+export WLR_RENDERER_ALLOW_SOFTWARE=1
 . "$HOME/.cargo/env"
-export GDK_SCALE=2
-export GDK_DPI_SCALE=0.5
-export QT_AUTO_SCREEN_SCALE_FACTOR=1
+export WLC_REPEAT_RATE=60
+export WLC_REPEAT_DELAY=250
+export BROWSER=google-chrome-stable
