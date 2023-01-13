@@ -9,6 +9,7 @@ set PATH /home/mrgeek/.local/share/gem/ruby/3.0.0/bin $PATH
 set PATH /home/mrgeek/.krew/bin $PATH
 set PATH /home/mrgeek/.zx/bin $PATH
 set PATH /home/mrgeek/.fly/bin $PATH
+set PATH /home/mrgeek/.ebcli-virtual-env/executables $PATH
 
 source ~/.config/fish/private.fish
 
