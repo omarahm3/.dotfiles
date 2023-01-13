@@ -82,7 +82,7 @@ vim.o.foldlevel = 99
 -- general
 lvim.log.level = "warn"
 lvim.format_on_save.enabled = true
-lvim.colorscheme = "rose-pine"
+lvim.colorscheme = "catppuccin-mocha"
 
 -- keymappings [view all the defaults by pressing <leader>Lk]
 lvim.leader = "space"
@@ -312,7 +312,7 @@ lvim.plugins = {
     as = "catppuccin",
     config = function()
       require('catppuccin').setup({
-        falvor = "macchiato",
+        flavour = "mocha",
       })
     end
   },
@@ -392,6 +392,9 @@ lvim.plugins = {
   },
   {
     'mbbill/undotree',
+  },
+  {
+    'elkowar/yuck.vim'
   }
 }
 
