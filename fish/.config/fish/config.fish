@@ -1,4 +1,4 @@
-set -g -x fish_greeting ''
+
 set PATH /home/mrgeek/.local/bin $PATH
 set PATH /home/mrgeek/go/bin $PATH
 set PATH /home/mrgeek/.config/composer/vendor/bin $PATH
@@ -11,6 +11,7 @@ set PATH /home/mrgeek/.zx/bin $PATH
 set PATH /home/mrgeek/.fly/bin $PATH
 set PATH /home/mrgeek/.ebcli-virtual-env/executables $PATH
 
+source ~/.config/fish/variables.fish
 source ~/.config/fish/private.fish
 
 # Execute commands safely by first checking if the command exist or not
@@ -66,15 +67,3 @@ alias cd z
 alias vim lvim
 alias twork 'tmux a'
 alias tdev 'tmux -Ldevelopment a'
-
-# FZF catppuccin theme
-set -Ux FZF_DEFAULT_OPTS "--color=bg+:#302D41,bg:#1E1E2E,spinner:#F8BD96,hl:#F28FAD --color=fg:#D9E0EE,header:#F28FAD,info:#DDB6F2,pointer:#F8BD96 --color=marker:#F8BD96,fg+:#F2CDCD,prompt:#DDB6F2,hl+:#F28FAD"
-
-set -e EDITOR
-set -Ux EDITOR lvim
-set -q GHCUP_INSTALL_BASE_PREFIX[1]; or set GHCUP_INSTALL_BASE_PREFIX $HOME ; set -gx PATH $HOME/.cabal/bin $PATH /home/mrgeek/.ghcup/bin # ghcup-env
-
-# pnpm
-set -gx PNPM_HOME "/home/mrgeek/.local/share/pnpm"
-set -gx PATH "$PNPM_HOME" $PATH
-# pnpm end
