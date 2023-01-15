@@ -8,3 +8,7 @@ export WLR_RENDERER_ALLOW_SOFTWARE=1
 export WLC_REPEAT_RATE=60
 export WLC_REPEAT_DELAY=250
 export BROWSER=google-chrome-stable
+export SDL_VIDEODRIVER=wayland
+export _JAVA_AWT_WM_NONREPARENTING=1
+export QT_QPA_PLATFORM=wayland
+export XDG_SESSION_DESKTOP=sway

@@ -23,6 +23,7 @@
     "network",
     "battery",
     "clock",
+    "sway/language",
     "custom/power-menu"
   ],
   "sway/workspaces": {
