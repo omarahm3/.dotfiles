@@ -47,9 +47,8 @@
     "spacing": 10
   },
   "clock": {
-    "format": "<span color='#bf616a'> </span>{:%a %b %d}",
-    "format-alt": "<span color='#bf616a'> </span>{:%I:%M %p}",
-    "tooltip-format": "<big>{:%B %Y}</big>\n<tt><small>{calendar}</small></tt>",
+    "format": "<span foreground='#C6AAE8'> </span>{:%a %d %H:%M}",
+    "tooltip-format": "<big>{:%Y %B}</big>\n<tt><small>{calendar}</small></tt>",
   },
   "cpu": {
     "interval": 10,

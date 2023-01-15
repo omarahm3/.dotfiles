@@ -233,3 +233,5 @@ bindsym $mod+r mode "resize"
 # Keybindings List
 #
     bindsym $mod+t exec xed ~/.config/sway/cheatsheet
+
+focus_follows_mouse no

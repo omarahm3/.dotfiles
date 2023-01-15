@@ -16,7 +16,7 @@ exec hash dbus-update-activation-environment 2>/dev/null && \
 exec dex -a -s /etc/xdg/autostart/:~/.config/autostart/  
 
 # Sway Fader
-# exec python3 ~/.config/sway/scripts/swayfader.py      
+exec python3 ~/.config/sway/scripts/swayfader.py
 
 # tmux
 exec --no-startup-id tmux -Ldevelopment new -s General -d
@@ -24,3 +24,6 @@ exec --no-startup-id tmux new -s General -d
 
 # terminal
 exec --no-startup-id kitty --class dropdown -e /usr/bin/fish
+
+# Start udiskie
+exec --no-startup-id /usr/bin/udiskie --automount --notify --tray &
