@@ -87,6 +87,40 @@ lvim.colorscheme = "catppuccin-mocha"
 -- keymappings [view all the defaults by pressing <leader>Lk]
 lvim.leader = "space"
 
+local function commit_push()
+  vim.ui.input({
+    prompt = "commit message: "
+  }, function(input)
+    local Job = require("plenary.job")
+    local cwd = vim.loop.cwd()
+
+    if cwd == nil then
+      print('unknown working directory')
+      return
+    end
+
+    local commit_job = Job:new({
+      'git', 'commit', '-m', '"' .. input .. '"',
+      cwd = cwd,
+    })
+
+    local push_job = Job:new({
+      'git', 'push',
+      cwd = cwd,
+    })
+
+    local commit_stdout, commit_code = commit_job:sync()
+    if commit_code ~= 0 then
+      print("error commiting changes: " .. tostring(commit_stdout))
+    end
+
+    local push_stdout, push_code = push_job:sync()
+    if push_code ~= 0 then
+      print("error pushing changes: " .. tostring(push_stdout))
+    end
+  end)
+end
+
 -- add your own keymapping
 local git_mappings = lvim.builtin.which_key.mappings["g"]
 local find_mappings = lvim.builtin.which_key.mappings["s"]
@@ -116,7 +150,8 @@ local mappings = {
     }),
     ["g"] = vim.tbl_deep_extend("force", git_mappings, {
       h = git_mappings.s,
-      s = { ":G<CR>", "Status" }
+      s = { ":G<CR>", "Status" },
+      P = { commit_push, "Push with message" }
     }),
     ["zR"] = { ":lua require('ufo').openAllFolds", "open all folds" },
     ["zM"] = { ":lua require('ufo').closeAllFolds", "close all folds" },
