@@ -23,7 +23,7 @@ exec --no-startup-id tmux -Ldevelopment new -s General -d
 exec --no-startup-id tmux new -s General -d
 
 # terminal
-exec --no-startup-id kitty --class dropdown -e /usr/bin/fish
+# exec --no-startup-id kitty --class dropdown -e /usr/bin/fish
 
 # Start udiskie
 exec --no-startup-id /usr/bin/udiskie --automount --notify --tray &

@@ -51,3 +51,4 @@ for_window [app_id="Chromium"] inhibit_idle fullscreen
 
 # flameshot
 for_window [app_id="flameshot"] floating enable, fullscreen disable, move absolute position 0 0, border pixel 0
+for_window [class="Anki"] floating enable
