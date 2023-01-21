@@ -91,6 +91,10 @@ local function commit_push()
   vim.ui.input({
     prompt = "commit message: "
   }, function(input)
+    if input == nil then
+      return
+    end
+
     local Job = require("plenary.job")
     local cwd = vim.loop.cwd()
 
@@ -301,8 +305,8 @@ lvim.builtin.treesitter.indent.disable = { "python" }
 -- set a formatter, this will override the language server formatting capabilities (if it exists)
 local formatters = require "lvim.lsp.null-ls.formatters"
 formatters.setup {
-  -- { command = "black", filetypes = { "python" } },
-  -- { command = "isort", filetypes = { "python" } },
+  { command = "black", filetypes = { "python" } },
+  { command = "isort", filetypes = { "python" } },
   {
     -- each formatter accepts a list of options identical to https://github.com/jose-elias-alvarez/null-ls.nvim/blob/main/doc/BUILTINS.md#Configuration
     command = "prettier",
