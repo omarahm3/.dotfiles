@@ -60,7 +60,7 @@ exec --no-startup-id dbus-update-activation-environment --systemd DISPLAY WAYLAN
     bindsym $mod+Shift+b exec $powermenu
 
     # Open the power menu
-    bindsym $mod+Shift+s exec sticky toggle
+    bindsym $mod+Shift+s exec floating toggle, sticky enable, resize set 512 px 450 px, move right 450px, move up 300px
 
     # Kill focused window
     bindsym $mod+Shift+q kill
@@ -153,7 +153,7 @@ exec --no-startup-id dbus-update-activation-environment --systemd DISPLAY WAYLAN
     bindsym $mod+Shift+f floating toggle
 
     # Swap focus between the tiling area and the floating area
-    bindsym $mod+Ctrl+f focus mode_toggle
+    bindsym $mod+Ctrl+a focus mode_toggle
 
     # Move focus to the parent container
     bindsym $mod+a focus parent
