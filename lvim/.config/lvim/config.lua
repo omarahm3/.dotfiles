@@ -441,6 +441,9 @@ lvim.plugins = {
   },
   {
     'elkowar/yuck.vim'
+  },
+  {
+    'Exafunction/codeium.vim',
   }
 }
 
