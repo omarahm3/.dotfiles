@@ -197,7 +197,11 @@ for key, value in pairs(mappings.normal) do
   lvim.builtin.which_key.mappings[key] = value
 end
 
-require("telescope").load_extension("git_worktree")
+local isWorktree = pcall(require, 'git-worktree')
+
+if isWorktree then
+  require("telescope").load_extension("git_worktree")
+end
 
 -- Change Telescope navigation to use j and k for navigation and n and p for history in both input and normal mode.
 -- we use protected-mode (pcall) just in case the plugin wasn't loaded yet.
