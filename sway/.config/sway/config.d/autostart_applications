@@ -1,0 +1,29 @@
+# Auth with polkit-gnome:
+exec /usr/lib/polkit-gnome/polkit-gnome-authentication-agent-1
+
+# Desktop notifications
+exec mako
+
+# Network Applet
+exec nm-applet --indicator
+
+# GTK3 applications take a long time to start
+exec systemctl --user import-environment DISPLAY WAYLAND_DISPLAY SWAYSOCK
+exec hash dbus-update-activation-environment 2>/dev/null && \
+     dbus-update-activation-environment --systemd DISPLAY WAYLAND_DISPLAY SWAYSOCK
+     
+# Welcome App
+exec dex -a -s /etc/xdg/autostart/:~/.config/autostart/  
+
+# Sway Fader
+exec python3 ~/.config/sway/scripts/swayfader.py
+
+# tmux
+exec --no-startup-id tmux -Ldevelopment new -s General -d
+exec --no-startup-id tmux new -s General -d
+
+# terminal
+# exec --no-startup-id kitty --class dropdown -e /usr/bin/fish
+
+# Start udiskie
+exec --no-startup-id /usr/bin/udiskie --automount --notify --tray &

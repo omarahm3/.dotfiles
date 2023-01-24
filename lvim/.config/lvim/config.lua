@@ -87,6 +87,44 @@ lvim.colorscheme = "catppuccin-mocha"
 -- keymappings [view all the defaults by pressing <leader>Lk]
 lvim.leader = "space"
 
+local function commit_push()
+  vim.ui.input({
+    prompt = "commit message: "
+  }, function(input)
+    if input == nil then
+      return
+    end
+
+    local Job = require("plenary.job")
+    local cwd = vim.loop.cwd()
+
+    if cwd == nil then
+      print('unknown working directory')
+      return
+    end
+
+    local commit_job = Job:new({
+      'git', 'commit', '-m', '"' .. input .. '"',
+      cwd = cwd,
+    })
+
+    local push_job = Job:new({
+      'git', 'push',
+      cwd = cwd,
+    })
+
+    local commit_stdout, commit_code = commit_job:sync()
+    if commit_code ~= 0 then
+      print("error commiting changes: " .. tostring(commit_stdout))
+    end
+
+    local push_stdout, push_code = push_job:sync()
+    if push_code ~= 0 then
+      print("error pushing changes: " .. tostring(push_stdout))
+    end
+  end)
+end
+
 -- add your own keymapping
 local git_mappings = lvim.builtin.which_key.mappings["g"]
 local find_mappings = lvim.builtin.which_key.mappings["s"]
@@ -116,7 +154,8 @@ local mappings = {
     }),
     ["g"] = vim.tbl_deep_extend("force", git_mappings, {
       h = git_mappings.s,
-      s = { ":G<CR>", "Status" }
+      s = { ":G<CR>", "Status" },
+      P = { commit_push, "Push with message" }
     }),
     ["zR"] = { ":lua require('ufo').openAllFolds", "open all folds" },
     ["zM"] = { ":lua require('ufo').closeAllFolds", "close all folds" },
@@ -158,7 +197,11 @@ for key, value in pairs(mappings.normal) do
   lvim.builtin.which_key.mappings[key] = value
 end
 
-require("telescope").load_extension("git_worktree")
+local isWorktree = pcall(require, 'git-worktree')
+
+if isWorktree then
+  require("telescope").load_extension("git_worktree")
+end
 
 -- Change Telescope navigation to use j and k for navigation and n and p for history in both input and normal mode.
 -- we use protected-mode (pcall) just in case the plugin wasn't loaded yet.
@@ -266,8 +309,8 @@ lvim.builtin.treesitter.indent.disable = { "python" }
 -- set a formatter, this will override the language server formatting capabilities (if it exists)
 local formatters = require "lvim.lsp.null-ls.formatters"
 formatters.setup {
-  -- { command = "black", filetypes = { "python" } },
-  -- { command = "isort", filetypes = { "python" } },
+  { command = "black", filetypes = { "python" } },
+  { command = "isort", filetypes = { "python" } },
   {
     -- each formatter accepts a list of options identical to https://github.com/jose-elias-alvarez/null-ls.nvim/blob/main/doc/BUILTINS.md#Configuration
     command = "prettier",
@@ -277,25 +320,28 @@ formatters.setup {
     ---@usage specify which filetypes to enable. By default a providers will attach to all the filetypes it supports.
     filetypes = { "typescript", "typescriptreact" },
   },
+  {
+    command = "shfmt",
+  },
 }
 
 -- -- set additional linters
--- local linters = require "lvim.lsp.null-ls.linters"
--- linters.setup {
---   { command = "flake8", filetypes = { "python" } },
---   {
---     -- each linter accepts a list of options identical to https://github.com/jose-elias-alvarez/null-ls.nvim/blob/main/doc/BUILTINS.md#Configuration
---     command = "shellcheck",
---     ---@usage arguments to pass to the formatter
---     -- these cannot contain whitespaces, options such as `--line-width 80` become either `{'--line-width', '80'}` or `{'--line-width=80'}`
---     extra_args = { "--severity", "warning" },
---   },
---   {
---     command = "codespell",
---     ---@usage specify which filetypes to enable. By default a providers will attach to all the filetypes it supports.
---     filetypes = { "javascript", "python" },
---   },
--- }
+local linters = require "lvim.lsp.null-ls.linters"
+linters.setup {
+  --   { command = "flake8", filetypes = { "python" } },
+  {
+    -- each linter accepts a list of options identical to https://github.com/jose-elias-alvarez/null-ls.nvim/blob/main/doc/BUILTINS.md#Configuration
+    command = "shellcheck",
+    ---@usage arguments to pass to the formatter
+    -- these cannot contain whitespaces, options such as `--line-width 80` become either `{'--line-width', '80'}` or `{'--line-width=80'}`
+    extra_args = { "--severity", "warning" },
+  },
+  --   {
+  --     command = "codespell",
+  --     ---@usage specify which filetypes to enable. By default a providers will attach to all the filetypes it supports.
+  --     filetypes = { "javascript", "python" },
+  --   },
+}
 
 -- Additional Plugins
 lvim.plugins = {
@@ -309,7 +355,7 @@ lvim.plugins = {
   },
   {
     "catppuccin/nvim",
-    as = "catppuccin",
+    name = "catppuccin",
     config = function()
       require('catppuccin').setup({
         flavour = "mocha",
@@ -321,7 +367,7 @@ lvim.plugins = {
   },
   {
     "kevinhwang91/nvim-ufo",
-    requires = "kevinhwang91/promise-async",
+    dependencies = "kevinhwang91/promise-async",
     config = [[ require("ufo").setup() ]],
   },
   {
@@ -344,7 +390,7 @@ lvim.plugins = {
   },
   {
     "stevearc/dressing.nvim",
-    requires = {
+    dependencies = {
       "MunifTanjim/nui.nvim",
     },
     config = [[ require("dressing").setup({}) ]],
@@ -363,7 +409,7 @@ lvim.plugins = {
   },
   {
     "folke/todo-comments.nvim",
-    requires = "nvim-lua/plenary.nvim",
+    dependencies = "nvim-lua/plenary.nvim",
     config = function()
       require("todo-comments").setup {
         keywords = {
@@ -385,7 +431,7 @@ lvim.plugins = {
   },
   {
     'rose-pine/neovim',
-    as = 'rose-pine',
+    name = 'rose-pine',
   },
   {
     'ThePrimeagen/harpoon',
@@ -395,6 +441,9 @@ lvim.plugins = {
   },
   {
     'elkowar/yuck.vim'
+  },
+  {
+    'Exafunction/codeium.vim',
   }
 }
 
