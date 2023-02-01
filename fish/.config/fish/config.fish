@@ -13,6 +13,7 @@ set PATH /home/mrgeek/.ebcli-virtual-env/executables $PATH
 
 source ~/.config/fish/variables.fish
 source ~/.config/fish/private.fish
+source ~/.config/fish/pyenv-checker.fish
 
 # Execute commands safely by first checking if the command exist or not
 # To avoid errors occurs on fish shell
