@@ -150,6 +150,8 @@ local mappings = {
     ["c"] = { ':silent !chmod +x %<CR>', "Chmowd" },
     ["f"] = vim.tbl_deep_extend("force", find_mappings, {
       w = { ":Telescope live_grep<CR>", "Text" },
+      F = { function() require("telescope.builtin").find_files { hidden = true, no_ignore = true } end,
+        "Search all files" },
       t = {},
     }),
     ["g"] = vim.tbl_deep_extend("force", git_mappings, {
@@ -173,6 +175,11 @@ local mappings = {
       ["h"] = { ":lua require('harpoon.ui').nav_file(2)<CR>", "Go to file 2" },
       ["j"] = { ":lua require('harpoon.ui').nav_file(3)<CR>", "Go to file 3" },
       ["n"] = { ":lua require('harpoon.ui').nav_file(4)<CR>", "Go to file 4" },
+    },
+    ["s"] = {
+      ["S"] = { ":lua require('spectre').open()<CR>", "Open Spectre" },
+      ["w"] = { ":lua require('spectre').open_visual({select_word=true})<CR>", "Search current word" },
+      ["f"] = { "viw:lua require('spectre').open_file_search()<CR>", "Search current file" },
     }
   },
 }
@@ -444,6 +451,13 @@ lvim.plugins = {
   },
   {
     'Exafunction/codeium.vim',
+  },
+  {
+    "iamcco/markdown-preview.nvim",
+    build = function() vim.fn["mkdp#util#install"]() end,
+  },
+  {
+    "windwp/nvim-spectre",
   }
 }
 
