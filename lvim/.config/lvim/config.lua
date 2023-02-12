@@ -83,6 +83,7 @@ vim.o.foldlevel = 99
 lvim.log.level = "warn"
 lvim.format_on_save.enabled = true
 lvim.colorscheme = "catppuccin-mocha"
+vim.g.material_style = "deep ocean"
 
 -- keymappings [view all the defaults by pressing <leader>Lk]
 lvim.leader = "space"
@@ -458,6 +459,12 @@ lvim.plugins = {
   },
   {
     "windwp/nvim-spectre",
+  },
+  {
+    "marko-cerovac/material.nvim",
+  },
+  {
+    "projekt0n/github-nvim-theme"
   }
 }
 
