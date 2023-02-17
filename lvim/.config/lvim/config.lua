@@ -82,7 +82,7 @@ vim.o.foldlevel = 99
 -- general
 lvim.log.level = "warn"
 lvim.format_on_save.enabled = true
-lvim.colorscheme = "catppuccin-mocha"
+lvim.colorscheme = "kanagawa"
 vim.g.material_style = "deep ocean"
 
 -- keymappings [view all the defaults by pressing <leader>Lk]
@@ -245,8 +245,6 @@ end
 --   w = { "<cmd>Trouble workspace_diagnostics<cr>", "Workspace Diagnostics" },
 -- }
 
--- TODO: User Config for predefined plugins
--- After changing plugin config exit and reopen LunarVim, Run :PackerInstall :PackerCompile
 lvim.builtin.alpha.active = true
 lvim.builtin.alpha.mode = "dashboard"
 lvim.builtin.terminal.active = true
@@ -465,6 +463,9 @@ lvim.plugins = {
   },
   {
     "projekt0n/github-nvim-theme"
+  },
+  {
+    "rebelot/kanagawa.nvim"
   }
 }
 
