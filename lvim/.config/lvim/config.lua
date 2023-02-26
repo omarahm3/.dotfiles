@@ -107,22 +107,12 @@ local function commit_push()
     local commit_job = Job:new({
       'git', 'commit', '-m', '"' .. input .. '"',
       cwd = cwd,
-    })
+    }):start()
 
-    local push_job = Job:new({
+    commit_job:and_then_on_success(Job:new({
       'git', 'push',
       cwd = cwd,
-    })
-
-    local commit_stdout, commit_code = commit_job:sync()
-    if commit_code ~= 0 then
-      print("error commiting changes: " .. tostring(commit_stdout))
-    end
-
-    local push_stdout, push_code = push_job:sync()
-    if push_code ~= 0 then
-      print("error pushing changes: " .. tostring(push_stdout))
-    end
+    }))
   end)
 end
 
@@ -210,6 +200,13 @@ local isWorktree = pcall(require, 'git-worktree')
 if isWorktree then
   require("telescope").load_extension("git_worktree")
 end
+
+require("telescope").load_extension("file_browser")
+
+lvim.builtin.telescope.extensions.file_browser = {
+  -- theme = "ivy",
+  hijack_netrw = true,
+}
 
 -- Change Telescope navigation to use j and k for navigation and n and p for history in both input and normal mode.
 -- we use protected-mode (pcall) just in case the plugin wasn't loaded yet.
@@ -466,7 +463,14 @@ lvim.plugins = {
   },
   {
     "rebelot/kanagawa.nvim"
-  }
+  },
+  {
+    "nvim-telescope/telescope-file-browser.nvim",
+    dependencies = {
+      "nvim-telescope/telescope.nvim",
+      "nvim-lua/plenary.nvim"
+    },
+  },
 }
 
 -- Autocommands (https://neovim.io/doc/user/autocmd.html)
