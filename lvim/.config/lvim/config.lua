@@ -105,14 +105,18 @@ local function commit_push()
     end
 
     local commit_job = Job:new({
-      'git', 'commit', '-m', '"' .. input .. '"',
-      cwd = cwd,
-    }):start()
+          'git',
+          'commit',
+          '-m',
+          '"' .. input .. '"',
+          cwd = cwd,
+        }):start()
 
-    commit_job:and_then_on_success(Job:new({
-      'git', 'push',
+    local push_job = Job:new({
+      'git',
+      'push',
       cwd = cwd,
-    }))
+    })
   end)
 end
 
@@ -148,7 +152,7 @@ local mappings = {
     ["g"] = vim.tbl_deep_extend("force", git_mappings, {
       h = git_mappings.s,
       s = { ":G<CR>", "Status" },
-      P = { commit_push, "Push with message" }
+      P = { commit_push, "Push with message" },
     }),
     ["zR"] = { ":lua require('ufo').openAllFolds", "open all folds" },
     ["zM"] = { ":lua require('ufo').closeAllFolds", "close all folds" },
@@ -246,7 +250,7 @@ lvim.builtin.alpha.active = true
 lvim.builtin.alpha.mode = "dashboard"
 lvim.builtin.terminal.active = true
 lvim.builtin.nvimtree.setup.view.side = "left"
-lvim.builtin.nvimtree.setup.renderer.icons.show.git = false
+lvim.builtin.nvimtree.setup.renderer.icons.show.git = true
 
 -- if you don't want all the parsers change this to a table of the ones you want
 lvim.builtin.treesitter.ensure_installed = {
@@ -463,6 +467,37 @@ lvim.plugins = {
   },
   {
     "rebelot/kanagawa.nvim"
+  },
+  {
+    "dnlhc/glance.nvim",
+    config = function()
+      require("glance").setup({})
+    end
+  },
+  {
+    "ray-x/go.nvim",
+    dependencies = { -- optional packages
+      "ray-x/guihua.lua",
+      "neovim/nvim-lspconfig",
+      "nvim-treesitter/nvim-treesitter",
+    },
+    config = function()
+      require("go").setup()
+    end,
+    event = { "CmdlineEnter" },
+    ft = { "go", 'gomod' },
+    build = ':lua require("go.install").update_all_sync()' -- if you need to install/update all binaries
+  },
+  {
+    'akinsho/git-conflict.nvim',
+    version = "*",
+    config = function()
+      require('git-conflict').setup({
+      })
+    end,
+  },
+  {
+    'simrat39/rust-tools.nvim'
   },
   {
     "nvim-telescope/telescope-file-browser.nvim",

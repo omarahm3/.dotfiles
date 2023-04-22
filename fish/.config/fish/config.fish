@@ -57,6 +57,7 @@ end
 test -s "$HOME/.config/envman/load.fish"; and source "$HOME/.config/envman/load.fish"
 
 alias cd z
+alias ls exa
 alias vim lvim
 alias twork 'tmux a'
 alias tdev 'tmux -Ldevelopment a'
