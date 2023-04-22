@@ -56,14 +56,6 @@ end
 # Generated for envman. Do not edit.
 test -s "$HOME/.config/envman/load.fish"; and source "$HOME/.config/envman/load.fish"
 
-if test -x (command -v fw)
-  if test -x (command -v fzf)
-    fw print-fish-setup -f | source
-  else
-    fw print-fish-setup | source
-  end
-end
-
 alias cd z
 alias vim lvim
 alias twork 'tmux a'
