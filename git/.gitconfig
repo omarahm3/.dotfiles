@@ -12,5 +12,5 @@
 [gc]
   reflogExpire = 200
   reflogExpireUnreachable = 90
-[url "ssh://git@github.com/"]
-	insteadOf = https://github.com/
+; [url "ssh://git@github.com/"]
+; 	insteadOf = https://github.com/
