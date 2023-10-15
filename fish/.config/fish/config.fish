@@ -61,3 +61,10 @@ alias ls exa
 alias vim lvim
 alias twork 'tmux a'
 alias tdev 'tmux -Ldevelopment a'
+
+# The next line updates PATH for the Google Cloud SDK.
+if [ -f '/tmp/google-cloud-sdk/path.fish.inc' ]; . '/tmp/google-cloud-sdk/path.fish.inc'; end
+
+# bun
+set --export BUN_INSTALL "$HOME/.bun"
+set --export PATH $BUN_INSTALL/bin $PATH
