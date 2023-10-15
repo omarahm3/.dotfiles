@@ -116,7 +116,7 @@ return {
     build = function() vim.fn["mkdp#util#install"]() end,
   },
   {
-    "windwp/nvim-spectre",
+    "nvim-pack/nvim-spectre",
   },
   {
     "marko-cerovac/material.nvim",
