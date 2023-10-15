@@ -570,8 +570,8 @@ set $i3-wm.bar.status_command i3xrocks -u ~/.config/regolith/i3xrocks/conf.d -d 
 ###############################################################################
 
 # Start the installed picom
-set $i3-wm.program.compositor "picom --config ~/.config/picom/config"
-exec_always --no-startup-id $i3-wm.program.compositor
+# set $i3-wm.program.compositor "picom --config ~/.config/picom/config"
+# exec_always --no-startup-id $i3-wm.program.compositor
 
 # Start Rofication for notifications
 set $i3-wm.program.notifications dbus-launch dunst --config ~/.config/dunst/dunstrc
