@@ -129,8 +129,8 @@ local mappings = {
   globalNormal = {
     ["<C-q>"] = { ":wqall<CR>", "Close nvim" },
     ["<ESC>"] = { ":noh<CR>", "No highlight" },
-    ["<Tab>"] = { ":BufferLineCycleNext<CR>", "Next" },
-    ["<S-Tab>"] = { ":BufferLineCyclePrev<CR>", "Previous" },
+    ["<S-L>"] = { ":BufferLineCycleNext<CR>", "Next" },
+    ["<S-H>"] = { ":BufferLineCyclePrev<CR>", "Previous" },
     ["<C-p>"] = { ":Telescope find_files<CR>", "Find file" },
     ["<C-f>"] = { ":silent !tmux neww tmux-sessionizer<CR>", "Find project" },
   },
@@ -142,11 +142,13 @@ local mappings = {
   normal = {
     ["u"] = { ':UndotreeToggle<CR>', "Undo tree" },
     ["x"] = { ':BufferKill<CR>', "Close current buffer" },
+    ["bd"] = { ':BufferKill<CR>', "Close current buffer" },
     ["c"] = { ':silent !chmod +x %<CR>', "Chmowd" },
     ["f"] = vim.tbl_deep_extend("force", find_mappings, {
       w = { ":Telescope live_grep<CR>", "Text" },
       F = { function() require("telescope.builtin").find_files { hidden = true, no_ignore = true } end,
         "Search all files" },
+      b = { ":Telescope file_browser<CR>", "File Browser" },
       t = {},
     }),
     ["g"] = vim.tbl_deep_extend("force", git_mappings, {
@@ -432,8 +434,8 @@ lvim.plugins = {
       require("todo-comments").setup {
         keywords = {
           FIX = {
-            icon = " ",                              -- icon used for the sign, and in search results
-            color = "error",                            -- can be a hex color, or a named color (see below)
+            icon = " ", -- icon used for the sign, and in search results
+            color = "error", -- can be a hex color, or a named color (see below)
             alt = { "FIXME", "BUG", "FIXIT", "ISSUE" }, -- a set of other keywords that all map to this FIX keywords
             -- signs = false, -- configure signs for some keywords individually
           },
@@ -462,6 +464,12 @@ lvim.plugins = {
   },
   {
     'Exafunction/codeium.vim',
+    config = function()
+      vim.keymap.set('i', '<C-g>', function() return vim.fn['codeium#Accept']() end, { expr = true })
+      vim.keymap.set('i', '<c-;>', function() return vim.fn['codeium#CycleCompletions'](1) end, { expr = true })
+      vim.keymap.set('i', '<c-,>', function() return vim.fn['codeium#CycleCompletions'](-1) end, { expr = true })
+      vim.keymap.set('i', '<c-x>', function() return vim.fn['codeium#Clear']() end, { expr = true })
+    end
   },
   {
     "iamcco/markdown-preview.nvim",

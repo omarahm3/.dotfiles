@@ -5,7 +5,7 @@ return {
     "LazyVim/LazyVim",
     opts = {
       colorscheme = "catppuccin",
-    }
+    },
   },
   { "folke/flash.nvim", enabled = false },
   {
@@ -20,10 +20,10 @@ return {
     "catppuccin/nvim",
     name = "catppuccin",
     config = function()
-      require('catppuccin').setup({
+      require("catppuccin").setup({
         flavour = "mocha",
       })
-    end
+    end,
   },
   {
     "tpope/vim-fugitive",
@@ -32,7 +32,7 @@ return {
     "kylechui/nvim-surround",
     event = "InsertEnter",
     config = function()
-      require('nvim-surround').setup({
+      require("nvim-surround").setup({
         keymaps = {
           -- vim-surround style keymaps
           -- insert = "ys",
@@ -45,7 +45,7 @@ return {
           duration = 0,
         },
       })
-    end
+    end,
   },
   {
     "stevearc/dressing.nvim",
@@ -59,10 +59,6 @@ return {
     config = [[ require("cutlass").setup({}) ]],
   },
   {
-    "j-hui/fidget.nvim",
-    config = [[ require("fidget").setup({}) ]],
-  },
-  {
     "ThePrimeagen/git-worktree.nvim",
     config = [[ require("git-worktree").setup({}) ]],
   },
@@ -70,11 +66,11 @@ return {
     "folke/todo-comments.nvim",
     dependencies = "nvim-lua/plenary.nvim",
     config = function()
-      require("todo-comments").setup {
+      require("todo-comments").setup({
         keywords = {
           FIX = {
-            icon = " ",                              -- icon used for the sign, and in search results
-            color = "error",                            -- can be a hex color, or a named color (see below)
+            icon = " ", -- icon used for the sign, and in search results
+            color = "error", -- can be a hex color, or a named color (see below)
             alt = { "FIXME", "BUG", "FIXIT", "ISSUE" }, -- a set of other keywords that all map to this FIX keywords
             -- signs = false, -- configure signs for some keywords individually
           },
@@ -85,53 +81,63 @@ return {
           NOTE = { icon = " ", color = "hint", alt = { "INFO" } },
           TEST = { icon = "⏲ ", color = "test", alt = { "TESTING", "PASSED", "FAILED" } },
         },
-      }
-    end
+      })
+    end,
   },
   {
-    'rose-pine/neovim',
-    name = 'rose-pine',
+    "rose-pine/neovim",
+    name = "rose-pine",
   },
   {
-    'ThePrimeagen/harpoon',
+    "ThePrimeagen/harpoon",
   },
   {
-    'mbbill/undotree',
+    "mbbill/undotree",
   },
   {
-    'elkowar/yuck.vim'
+    "elkowar/yuck.vim",
   },
   {
-    'Exafunction/codeium.vim',
-    config = function ()
+    "Exafunction/codeium.vim",
+    config = function()
       -- Change '<C-g>' here to any keycode you like.
-      vim.keymap.set('i', '<C-g>', function () return vim.fn['codeium#Accept']() end, { expr = true })
-      vim.keymap.set('i', '<c-;>', function() return vim.fn['codeium#CycleCompletions'](1) end, { expr = true })
-      vim.keymap.set('i', '<c-,>', function() return vim.fn['codeium#CycleCompletions'](-1) end, { expr = true })
-      vim.keymap.set('i', '<c-x>', function() return vim.fn['codeium#Clear']() end, { expr = true })
-    end
+      vim.keymap.set("i", "<C-g>", function()
+        return vim.fn["codeium#Accept"]()
+      end, { expr = true })
+      vim.keymap.set("i", "<c-;>", function()
+        return vim.fn["codeium#CycleCompletions"](1)
+      end, { expr = true })
+      vim.keymap.set("i", "<c-,>", function()
+        return vim.fn["codeium#CycleCompletions"](-1)
+      end, { expr = true })
+      vim.keymap.set("i", "<c-x>", function()
+        return vim.fn["codeium#Clear"]()
+      end, { expr = true })
+    end,
   },
   {
     "iamcco/markdown-preview.nvim",
-    build = function() vim.fn["mkdp#util#install"]() end,
+    build = function()
+      vim.fn["mkdp#util#install"]()
+    end,
   },
   {
-    "windwp/nvim-spectre",
+    "nvim-pack/nvim-spectre",
   },
   {
     "marko-cerovac/material.nvim",
   },
   {
-    "projekt0n/github-nvim-theme"
+    "projekt0n/github-nvim-theme",
   },
   {
-    "rebelot/kanagawa.nvim"
+    "rebelot/kanagawa.nvim",
   },
   {
     "dnlhc/glance.nvim",
     config = function()
       require("glance").setup({})
-    end
+    end,
   },
   {
     "ray-x/go.nvim",
@@ -144,19 +150,18 @@ return {
       require("go").setup()
     end,
     event = { "CmdlineEnter" },
-    ft = { "go", 'gomod' },
-    build = ':lua require("go.install").update_all_sync()' -- if you need to install/update all binaries
+    ft = { "go", "gomod" },
+    build = ':lua require("go.install").update_all_sync()', -- if you need to install/update all binaries
   },
   {
-    'akinsho/git-conflict.nvim',
+    "akinsho/git-conflict.nvim",
     version = "*",
     config = function()
-      require('git-conflict').setup({
-      })
+      require("git-conflict").setup({})
     end,
   },
   {
-    'simrat39/rust-tools.nvim'
+    "simrat39/rust-tools.nvim",
   },
   {
     "nvim-telescope/telescope.nvim",
@@ -226,14 +231,13 @@ return {
     "nvim-telescope/telescope-file-browser.nvim",
     dependencies = {
       "nvim-telescope/telescope.nvim",
-      "nvim-lua/plenary.nvim"
+      "nvim-lua/plenary.nvim",
     },
   },
   {
-    dir = "~/projects/pretty-ts-errors.nvim"
+    dir = "~/projects/pretty-ts-errors.nvim",
   },
   {
-    "rafcamlet/nvim-luapad"
-  }
-
+    "rafcamlet/nvim-luapad",
+  },
 }
