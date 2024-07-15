@@ -133,8 +133,8 @@ local function commit_push()
 
             vim.schedule(function()
               vim.cmd('Git')
+              vim.notify("Changes committed and pushed")
             end)
-            vim.notify("Changes committed and pushed")
           end
         }):start()
       end
