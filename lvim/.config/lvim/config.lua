@@ -93,14 +93,14 @@ local function commit_push()
     prompt = "commit message: "
   }, function(input)
     if input == nil or input == "" then
-      print("Commit message cannot be empty")
+      vim.notify("Commit message cannot be empty")
       return
     end
 
     local cwd = vim.loop.cwd()
 
     if cwd == nil then
-      print('unknown working directory')
+      vim.notify('unknown working directory')
       return
     end
 
@@ -114,7 +114,7 @@ local function commit_push()
       },
       on_exit = function(commit_job, commit_return_val)
         if commit_return_val ~= 0 then
-          print("Failed to commit changes: " .. table.concat(commit_job:stderr_result(), "\n"))
+          vim.notify("Failed to commit changes: " .. table.concat(commit_job:stderr_result(), "\n"))
           return
         end
 
@@ -126,12 +126,13 @@ local function commit_push()
           cwd = cwd,
           on_exit = function(push_job, push_return_val)
             if push_return_val ~= 0 then
-              print("Failed to push changes: " ..
+              vim.notify("Failed to push changes: " ..
                 table.concat(push_job:stderr_result(), "\n") .. "\n" .. table.concat(push_job:result(), "\n"))
               return
             end
 
-            print("Changes committed and pushed")
+            vim.cmd('Git')
+            vim.notify("Changes committed and pushed")
           end
         }):start()
       end
