@@ -100,7 +100,9 @@ local function commit_push()
     local cwd = vim.loop.cwd()
 
     if cwd == nil then
-      vim.notify('unknown working directory')
+      vim.schedule(function()
+        vim.notify('unknown working directory')
+      end)
       return
     end
 
@@ -114,7 +116,9 @@ local function commit_push()
       },
       on_exit = function(commit_job, commit_return_val)
         if commit_return_val ~= 0 then
-          vim.notify("Failed to commit changes: " .. table.concat(commit_job:stderr_result(), "\n"))
+          vim.schedule(function()
+            vim.notify("Failed to commit changes: " .. table.concat(commit_job:stderr_result(), "\n"))
+          end)
           return
         end
 
@@ -126,8 +130,10 @@ local function commit_push()
           cwd = cwd,
           on_exit = function(push_job, push_return_val)
             if push_return_val ~= 0 then
-              vim.notify("Failed to push changes: " ..
-                table.concat(push_job:stderr_result(), "\n") .. "\n" .. table.concat(push_job:result(), "\n"))
+              vim.schedule(function()
+                vim.notify("Failed to push changes: " ..
+                  table.concat(push_job:stderr_result(), "\n") .. "\n" .. table.concat(push_job:result(), "\n"))
+              end)
               return
             end
 
