@@ -10,3 +10,6 @@ set -q GHCUP_INSTALL_BASE_PREFIX[1]; or set GHCUP_INSTALL_BASE_PREFIX $HOME ; se
 # pnpm
 set -gx PNPM_HOME "/home/mrgeek/.local/share/pnpm"
 set -gx PATH "$PNPM_HOME" $PATH
+
+set -gx ANDROID_HOME /opt/android-sdk
+set -gx JAVA_HOME /usr/lib/jvm/java-21-openjdk/
