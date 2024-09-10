@@ -14,7 +14,7 @@ local options = {
   -- fileencoding = "utf-8", -- the encoding written to file
   hlsearch = true,           -- highlight all matches on previous search pattern
   ignorecase = true,         -- ignore case while searching
-  mouse = "",                -- disable mouse mode to be used in vim
+  mouse = "a",               -- disable mouse mode to be used in vim
   pumheight = 10,            -- pop up menu height
   showmode = false,          -- dont show stuff like INSERT anymore
   showtabline = 2,           -- always show tabs
@@ -88,12 +88,57 @@ vim.g.repl_filetype_commands = {
 
 local Job = require("plenary.job")
 
+local function git_create_branch()
+  vim.ui.input({
+    prompt = "Branch Name: "
+  }, function(input)
+    if input == nil or input == "" then
+      vim.schedule(function()
+        vim.notify("Commit message cannot be empty")
+      end)
+      return
+    end
+
+    local cwd = vim.loop.cwd()
+    if cwd == nil then
+      vim.schedule(function()
+        vim.notify('unknown working directory')
+      end)
+      return
+    end
+
+    Job:new({
+      command = 'git',
+      args = {
+        'checkout',
+        '-b',
+        input
+      },
+      cwd = cwd,
+      on_exit = function(j, return_val)
+        if return_val ~= 0 then
+          vim.schedule(function()
+            vim.notify("Failed to create branch: " ..
+              table.concat(j:stderr_result(), "\n") .. "\n" .. table.concat(j:result(), "\n"))
+          end)
+          return
+        end
+        vim.schedule(function()
+          vim.notify("Created branch: " .. input)
+        end)
+      end
+    }):start()
+  end)
+end
+
 local function commit_push()
   vim.ui.input({
     prompt = "commit message: "
   }, function(input)
     if input == nil or input == "" then
-      vim.notify("Commit message cannot be empty")
+      vim.schedule(function()
+        vim.notify("Commit message cannot be empty")
+      end)
       return
     end
 
@@ -111,7 +156,7 @@ local function commit_push()
       args = {
         'commit',
         '-m',
-        '"' .. input .. '"',
+        input,
         cwd = cwd,
       },
       on_exit = function(commit_job, commit_return_val)
@@ -182,6 +227,7 @@ local mappings = {
     ["g"] = vim.tbl_deep_extend("force", git_mappings, {
       h = git_mappings.s,
       s = { ":G<CR>", "Status" },
+      b = { git_create_branch, "Create new branch" },
       P = { commit_push, "Push with message" },
     }),
     ["zR"] = { ":lua require('ufo').openAllFolds", "open all folds" },
@@ -485,12 +531,97 @@ lvim.plugins = {
     "Mofiqul/dracula.nvim"
   },
   {
-    "ACupofAir/nvim-repl",
+    "Vigemus/iron.nvim",
     ft = "python",
     keys = {
       { "<leader>rt", "<cmd>ReplToggle<cr>",  desc = "Toggle nvim-repl" },
       { "<leader>rc", "<cmd>ReplRunCell<cr>", desc = "nvim-repl run cell" },
       { "<leader>rr", "<cmd>ReplClear<cr>",   desc = "nvim-repl clear" },
+    },
+  },
+  {
+    "OXY2DEV/markview.nvim",
+    lazy = false, -- Recommended
+    -- ft = "markdown" -- If you decide to lazy-load anyway
+
+    dependencies = {
+      -- You will not need this if you installed the
+      -- parsers manually
+      -- Or if the parsers are in your $RUNTIMEPATH
+      "nvim-treesitter/nvim-treesitter",
+
+      "nvim-tree/nvim-web-devicons"
+    }
+  },
+  {
+    "yetone/avante.nvim",
+    event = "VeryLazy",
+    lazy = false,
+    opts = {
+      provider = "ollama",
+      vendors = {
+        ollama = {
+          ["local"] = true,
+          endpoint = "localhost:11434/v1",
+          model = "deepseek-coder:33b",
+          parse_curl_args = function(opts, code_opts)
+            return {
+              url = opts.endpoint .. "/chat/completions",
+              headers = {
+                ["Accept"] = "application/json",
+                ["Content-Type"] = "application/json",
+              },
+              body = {
+                model = opts.model,
+                messages = require("avante.providers").copilot.parse_message(code_opts), -- you can make your own message, but this is very advanced
+                max_tokens = 2048,
+                stream = true,
+              },
+            }
+          end,
+          parse_response_data = function(data_stream, event_state, opts)
+            require("avante.providers").openai.parse_response(data_stream, event_state, opts)
+          end,
+        },
+      }
+    },
+    keys = {
+      { "<leader>aa", function() require("avante.api").ask() end,     desc = "avante: ask",    mode = { "n", "v" } },
+      { "<leader>ar", function() require("avante.api").refresh() end, desc = "avante: refresh" },
+      { "<leader>ae", function() require("avante.api").edit() end,    desc = "avante: edit",   mode = "v" },
+    },
+    dependencies = {
+      "stevearc/dressing.nvim",
+      "nvim-lua/plenary.nvim",
+      "MunifTanjim/nui.nvim",
+      --- The below dependencies are optional,
+      "nvim-tree/nvim-web-devicons", -- or echasnovski/mini.icons
+      "zbirenbaum/copilot.lua",      -- for providers='copilot'
+      {
+        -- support for image pasting
+        "HakonHarnes/img-clip.nvim",
+        event = "VeryLazy",
+        opts = {
+          -- recommended settings
+          default = {
+            embed_image_as_base64 = false,
+            prompt_for_file_name = false,
+            drag_and_drop = {
+              insert_mode = true,
+            },
+            -- required for Windows users
+            use_absolute_path = true,
+          },
+        },
+      },
+      {
+        -- Make sure to setup it properly if you have lazy=true
+        'MeanderingProgrammer/render-markdown.nvim',
+        opts = {
+          file_types = { "markdown", "Avante" },
+        },
+        ft = { "markdown", "Avante" },
+      },
     },
   }
 }
