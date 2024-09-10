@@ -9,6 +9,18 @@ WINIT_X11_SCALE_FACTOR = "1"
 builtin_box_drawing = false
 size = 10
 
+[font.normal]
+family = "FiraCode Nerd Font"
+style = "Regular"
+
+[font.bold]
+family = "FiraCode Nerd Font"
+style = "Bold"
+
+[font.italic]
+family = "FiraCode Nerd Font"
+style = "Italic"
+
 [window]
 decorations = "full"
 dynamic_padding = false
