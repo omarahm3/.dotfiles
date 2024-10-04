@@ -13,5 +13,6 @@ function toggle_conda --description="Toggle between active Conda environment and
   else
     echo "Activating Conda..."
     set -a PATH ~/anaconda3/bin
+    eval /home/mrgeek/anaconda3/bin/conda "shell.fish" "hook" $argv | source
   end
 end
