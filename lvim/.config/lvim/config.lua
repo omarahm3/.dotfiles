@@ -76,15 +76,9 @@ vim.o.foldlevel = 99
 lvim.log.level = "warn"
 lvim.format_on_save.enabled = true
 lvim.colorscheme = "catppuccin"
-vim.g.material_style = "deep ocean"
 
 -- keymappings [view all the defaults by pressing <leader>Lk]
 lvim.leader = "space"
-
-vim.g.repl_filetype_commands = {
-  python = "ipython --no-autoindent",
-  javascript = 'node',
-}
 
 local Job = require("plenary.job")
 
