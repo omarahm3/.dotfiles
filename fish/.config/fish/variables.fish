@@ -14,3 +14,4 @@ set -gx PATH "$PNPM_HOME" $PATH
 set -gx ANDROID_HOME /opt/android-sdk
 set -gx JAVA_HOME /usr/lib/jvm/java-21-openjdk/
 set -gx N_PREFIX /home/mrgeek/n
+set -gx GOROOT /usr/local/go

@@ -12,6 +12,7 @@ set PATH /home/mrgeek/.fly/bin $PATH
 set PATH /home/mrgeek/.ebcli-virtual-env/executables $PATH
 set PATH /opt/android-sdk/tools/bin $PATH
 set PATH /opt/android-sdk/platform-tools $PATH
+set PATH /usr/local/go/bin $PATH
 
 source ~/.config/fish/variables.fish
 source ~/.config/fish/private.fish
@@ -78,8 +79,6 @@ end
 set -gx CONDA_AUTO_ACTIVATE_BASE false
 
 ~/.local/bin/mise activate fish | source
-# envio DO NOT MODIFY
- bass source /home/mrgeek/.envio/setenv.sh
 
 # >>> conda initialize >>>
 # !! Contents within this block are managed by 'conda init' !!
