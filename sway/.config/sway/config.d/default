@@ -16,14 +16,14 @@ set $volume_mute $(pactl set-sink-mute @DEFAULT_SINK@ toggle && pactl get-sink-m
 set $mic_mute $(pactl set-source-mute @DEFAULT_SOURCE@ toggle && pactl get-source-mute @DEFAULT_SOURCE@ | sed -En "/no/ s/.*/$($source_volume)/p; /yes/ s/.*/0/p")
 
 # Your preferred terminal emulators
-set $term-float alacritty
+set $term-float kitty
 
 # Your preferred application launcher
 # Note: pass the final command to swaymsg so that the resulting window can be opened
 # on the original workspace that the command was run on.
-set $menu wofi -c ~/.config/wofi/config -I
+set $menu rofi -show drun -config ~/.config/rofi/themes/image-header.rasi
 
-set $powermenu ~/.config/waybar/scripts/power-menu.sh
+set $powermenu wlogout --protocol layer-shell
 
 ### Idle configuration
 exec swayidle -w\
@@ -67,6 +67,9 @@ exec --no-startup-id dbus-update-activation-environment --systemd DISPLAY WAYLAN
 
     # Start your launcher
     bindsym $mod+space exec $menu
+    
+    # Start your launcher
+    bindsym ctrl+Shift+space exec makoctl dismiss
 
     # Activities
     bindsym $mod+p exec ~/.config/wofi/windows.py
@@ -228,7 +231,7 @@ bindsym $mod+r mode "resize"
 #
 # App shortcuts
 #
-    bindsym $mod+n exec thunar
+    bindsym $mod+Shift+n exec thunar
     bindsym $mod+o exec firefox
 #
 # Screenshots

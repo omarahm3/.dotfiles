@@ -15,8 +15,12 @@ input type:keyboard {
   repeat_rate 60
   
   xkb_layout us,ara
-  xkb_variant ,qwerty
-  xkb_options grp:alt_caps_toggle
+  xkb_options grp:lalt_lshift_toggle
+}
+
+input type:pointer {
+    accel_profile flat
+    pointer_accel 0
 }
 
 # exec_always {

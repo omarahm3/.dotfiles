@@ -8,9 +8,12 @@ exec mako
 exec nm-applet --indicator
 
 # GTK3 applications take a long time to start
-exec systemctl --user import-environment DISPLAY WAYLAND_DISPLAY SWAYSOCK
+exec systemctl --user import-environment WAYLAND_DISPLAY DISPLAY XDG_CURRENT_DESKTOP SWAYSOCK I3SOCK XCURSOR_SIZE XCURSOR_THEME
 exec hash dbus-update-activation-environment 2>/dev/null && \
-     dbus-update-activation-environment --systemd DISPLAY WAYLAND_DISPLAY SWAYSOCK
+     dbus-update-activation-environment --systemd WAYLAND_DISPLAY DISPLAY XDG_CURRENT_DESKTOP SWAYSOCK I3SOCK XCURSOR_SIZE XCURSOR_THEME
+
+exec_always --no-startup-id env WAYLAND_DISPLAY=wayland-1 systemctl --user import-environment WAYLAND_DISPLAY
+exec_always --no-startup-id env WAYLAND_DISPLAY=wayland-1 dbus-update-activation-environment --systemd WAYLAND_DISPLAY
      
 # Welcome App
 exec dex -a -s /etc/xdg/autostart/:~/.config/autostart/  
@@ -21,9 +24,6 @@ exec dex -a -s /etc/xdg/autostart/:~/.config/autostart/
 # tmux
 exec --no-startup-id tmux -Ldevelopment new -s General -d
 exec --no-startup-id tmux new -s General -d
-
-# terminal
-# exec --no-startup-id kitty --class dropdown -e /usr/bin/fish
 
 # Start udiskie
 exec --no-startup-id /usr/bin/udiskie --automount --notify --tray &
