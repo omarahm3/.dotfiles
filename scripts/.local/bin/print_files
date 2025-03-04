@@ -1,0 +1,60 @@
+#!/usr/bin/python3
+
+import os
+import sys
+import fnmatch
+import argparse
+
+DIVIDER = "-" * 40
+DEFAULT_IGNORE = ["node_modules", ".git", "go.*"]
+
+def print_files(path, exclude_patterns):
+    exclude_patterns = DEFAULT_IGNORE + exclude_patterns
+
+    # Separate exclude patterns into directory patterns (start with '.') and file patterns.
+    exclude_dir_patterns = [p for p in exclude_patterns if p.startswith(".")]
+    exclude_file_patterns = [p for p in exclude_patterns if not p.startswith(".")]
+
+    for root, dirs, files in os.walk(path, topdown=True):
+        # Prune directories that match any exclusion pattern for directories using fnmatch.
+        dirs[:] = [d for d in dirs if not any(fnmatch.fnmatch(d, pat) for pat in exclude_dir_patterns)]
+
+        for filename in files:
+            # For file patterns (non dot-prefixed), if the file's name matches, skip it.
+            if any(fnmatch.fnmatch(filename, pat) for pat in exclude_file_patterns):
+                continue
+
+            file_path = os.path.join(root, filename)
+            print(f"File: {file_path}")
+            print(DIVIDER)
+            try:
+                with open(file_path, "r", encoding="utf-8") as f:
+                    print(f.read())
+            except Exception as e:
+                print(f"Error reading {file_path}: {e}")
+            print(DIVIDER)
+
+def main():
+    parser = argparse.ArgumentParser(
+        description="Print all files in a given path recursively with optional exclusions."
+    )
+    parser.add_argument(
+        "path",
+        help="Path to the directory to search."
+    )
+    parser.add_argument(
+        "--exclude",
+        action="append",
+        default=[],
+        help="Exclude pattern; use a pattern for file names (e.g., 'go.*') or for directories if it starts with a dot (e.g., '.git')."
+    )
+    args = parser.parse_args()
+
+    if not os.path.exists(args.path):
+        print(f"Error: The path '{args.path}' does not exist.", file=sys.stderr)
+        sys.exit(1)
+
+    print_files(args.path, args.exclude)
+
+if __name__ == "__main__":
+    main()
