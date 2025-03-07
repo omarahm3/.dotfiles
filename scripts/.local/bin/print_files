@@ -72,6 +72,7 @@ def print_files(root_path: str, extra_exclude_patterns: list[str]):
             if should_exclude(rel_f, exclude_patterns):
                 continue
             file_path = os.path.join(root, filename)
+            print(f"File: {file_path}")
             print(DIVIDER)
             try:
                 with open(file_path, "r", encoding="utf-8") as f:
