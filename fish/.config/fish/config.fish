@@ -13,6 +13,7 @@ set PATH /home/mrgeek/.ebcli-virtual-env/executables $PATH
 set PATH /opt/android-sdk/tools/bin $PATH
 set PATH /opt/android-sdk/platform-tools $PATH
 set PATH /usr/local/go/bin $PATH
+set PATH /home/mrgeek/.local/share/bob/nvim-bin $PATH
 
 source ~/.config/fish/variables.fish
 source ~/.config/fish/private.fish
