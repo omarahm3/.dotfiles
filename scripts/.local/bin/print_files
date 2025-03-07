@@ -1,0 +1,107 @@
+#!/usr/bin/python3
+
+import os
+import sys
+import fnmatch
+import argparse
+
+DIVIDER = "-" * 40
+DEFAULT_IGNORE = ["node_modules", ".git", "go.*", ".gitignore"]
+
+def path_matches_pattern(path: str, pattern: str) -> bool:
+    """
+    Check if a given normalized path matches the exclusion pattern.
+    If the pattern is a literal (i.e. has no glob characters),
+    then we check for an exact match or that the path is under the directory
+    represented by the literal (prefix match).
+    Otherwise, we fall back to glob matching.
+    """
+    normalized_path = os.path.normpath(path)
+    normalized_pattern = os.path.normpath(pattern)
+    
+    # If no glob special characters, then do a literal match or prefix match.
+    if not any(ch in normalized_pattern for ch in "*?[]"):
+        # The pattern should match either exactly or as an ancestor directory.
+        if normalized_path == normalized_pattern:
+            return True
+        # For directory exclusion, check if the file is inside that directory.
+        if normalized_path.startswith(normalized_pattern + os.sep):
+            return True
+        return False
+
+    # When the pattern contains wildcards, use fnmatch.
+    return (fnmatch.fnmatch(normalized_path, normalized_pattern) or
+            fnmatch.fnmatch(os.path.basename(normalized_path), normalized_pattern))
+
+def should_exclude(relative_path: str, exclude_patterns: list[str]) -> bool:
+    """
+    Return True if any of the provided exclude_patterns matches the relative_path.
+    """
+    for pattern in exclude_patterns:
+        if path_matches_pattern(relative_path, pattern):
+            return True
+    return False
+
+def print_files(root_path: str, extra_exclude_patterns: list[str]):
+    """
+    Walk the directory tree starting at root_path and print the file paths
+    that do *not* match any of the exclusion patterns.
+    
+    Each file/folder is tested against the combined exclusion patterns. Literal patterns
+    (without glob wildcards) are treated as directory/file names or prefixes.
+    """
+    # The final list of exclusion patterns is a combination of defaults and any extra ones.
+    exclude_patterns = DEFAULT_IGNORE + extra_exclude_patterns
+
+    for root, dirs, files in os.walk(root_path, topdown=True):
+        # Compute relative path from the root_path.
+        rel_root = os.path.relpath(root, root_path)
+
+        # Filter directories in place so os.walk avoids descending into them.
+        new_dirs = []
+        for d in dirs:
+            # For the top-level (rel_root == '.'), use the directory name.
+            rel_d = os.path.join(rel_root, d) if rel_root != '.' else d
+            if should_exclude(rel_d, exclude_patterns):
+                continue
+            new_dirs.append(d)
+        dirs[:] = new_dirs  # Prune in-place.
+
+        for filename in files:
+            rel_f = os.path.join(rel_root, filename) if rel_root != '.' else filename
+            if should_exclude(rel_f, exclude_patterns):
+                continue
+            file_path = os.path.join(root, filename)
+            print(f"File: {file_path}")
+            print(DIVIDER)
+            try:
+                with open(file_path, "r", encoding="utf-8") as f:
+                    print(f.read())
+            except Exception as e:
+                print(f"Error reading {file_path}: {e}")
+            print(DIVIDER)
+
+def main():
+    parser = argparse.ArgumentParser(
+        description="Print all files in a given path recursively with optional exclusions."
+    )
+    parser.add_argument(
+        "path",
+        help="Path to the directory to search."
+    )
+    parser.add_argument(
+        "--exclude",
+        action="append",
+        default=[],
+        help="Exclude pattern; use a pattern for file names (e.g., 'go.*') or for directories if it starts with a dot (e.g., '.git')."
+    )
+    args = parser.parse_args()
+
+    if not os.path.exists(args.path):
+        print(f"Error: The path '{args.path}' does not exist.", file=sys.stderr)
+        sys.exit(1)
+
+    print_files(args.path, args.exclude)
+
+if __name__ == "__main__":
+    main()
