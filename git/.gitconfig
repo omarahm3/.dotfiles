@@ -12,6 +12,7 @@
 
 [diff]
   colorMoved = default
+	tool = vscode
 
 [user]
   email = me@mrg.sh
@@ -32,3 +33,8 @@
 	insteadOf = https://github.com/
 [color]
 	ui = auto
+[difftool "vscode"]
+	cmd = code --wait --diff $LOCAL $REMOTE
+[cola]
+	theme = flat-light-green
+	icontheme = light
