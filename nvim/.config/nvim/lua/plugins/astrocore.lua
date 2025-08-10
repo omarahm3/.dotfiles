@@ -5,6 +5,12 @@
 
 local Job = require("plenary.job")
 
+-- Check if snacks is available
+local function get_snacks()
+  local ok, snacks = pcall(require, "snacks")
+  return ok and snacks or nil
+end
+
 local function git_create_branch()
 	vim.ui.input({
 		prompt = "Branch Name: ",
@@ -53,12 +59,18 @@ local function git_create_branch()
 end
 
 local function commit_push()
+	local snacks = get_snacks()
+	
 	vim.ui.input({
 		prompt = "commit message: ",
 	}, function(input)
 		if input == nil or input == "" then
 			vim.schedule(function()
-				vim.notify("Commit message cannot be empty")
+				if snacks then
+					snacks.notifier.error("Commit message cannot be empty")
+				else
+					vim.notify("Commit message cannot be empty")
+				end
 			end)
 			return
 		end
@@ -67,9 +79,65 @@ local function commit_push()
 
 		if cwd == nil then
 			vim.schedule(function()
-				vim.notify("unknown working directory")
+				if snacks then
+					snacks.notifier.error("Unknown working directory")
+				else
+					vim.notify("unknown working directory")
+				end
 			end)
 			return
+		end
+
+		-- Create a window to show the git operation progress
+		local win_id = nil
+		local buf_id = nil
+		
+		if snacks then
+			win_id = snacks.win({
+				title = "Git Commit & Push",
+				width = 0.6,
+				height = 0.4,
+				wo = {
+					wrap = true,
+					spell = false,
+					signcolumn = "no",
+					statuscolumn = " ",
+				},
+				on_create = function(win, buf)
+					buf_id = buf
+					-- Set buffer options
+					vim.api.nvim_buf_set_option(buf, "modifiable", false)
+					vim.api.nvim_buf_set_option(buf, "buftype", "nofile")
+					vim.api.nvim_buf_set_option(buf, "filetype", "git")
+					
+					-- Add initial content
+					local lines = {
+						"🔄 Starting git commit and push...",
+						"",
+						"📝 Commit message: " .. input,
+						"📁 Working directory: " .. cwd,
+						"",
+						"⏳ Please wait..."
+					}
+					vim.api.nvim_buf_set_lines(buf, 0, -1, false, lines)
+				end
+			})
+		end
+
+		-- Function to update the window content
+		local function update_window(content)
+			if win_id and buf_id and vim.api.nvim_win_is_valid(win_id) then
+				vim.api.nvim_buf_set_option(buf_id, "modifiable", true)
+				vim.api.nvim_buf_set_lines(buf_id, 0, -1, false, content)
+				vim.api.nvim_buf_set_option(buf_id, "modifiable", false)
+			end
+		end
+
+		-- Function to close the window
+		local function close_window()
+			if win_id and vim.api.nvim_win_is_valid(win_id) then
+				vim.api.nvim_win_close(win_id, true)
+			end
 		end
 
 		Job:new({
@@ -78,15 +146,44 @@ local function commit_push()
 				"commit",
 				"-m",
 				input,
-				cwd = cwd,
 			},
+			cwd = cwd,
 			on_exit = function(commit_job, commit_return_val)
 				if commit_return_val ~= 0 then
+					local error_msg = "Failed to commit changes: " .. table.concat(commit_job:stderr_result(), "\n")
+					
 					vim.schedule(function()
-						vim.notify("Failed to commit changes: " .. table.concat(commit_job:stderr_result(), "\n"))
+						if snacks then
+							update_window({
+								"❌ Git Commit Failed",
+								"",
+								"📝 Commit message: " .. input,
+								"📁 Working directory: " .. cwd,
+								"",
+								"🔍 Error details:",
+								"",
+								unpack(commit_job:stderr_result())
+							})
+							snacks.notifier.error("Git commit failed")
+						else
+							vim.notify(error_msg)
+							close_window()
+						end
 					end)
 					return
 				end
+
+				-- Update window with commit success
+				vim.schedule(function()
+					update_window({
+						"✅ Git Commit Successful",
+						"",
+						"📝 Commit message: " .. input,
+						"📁 Working directory: " .. cwd,
+						"",
+						"🚀 Pushing to remote..."
+					})
+				end)
 
 				Job:new({
 					command = "git",
@@ -96,20 +193,50 @@ local function commit_push()
 					cwd = cwd,
 					on_exit = function(push_job, push_return_val)
 						if push_return_val ~= 0 then
+							local error_msg = "Failed to push changes: " .. table.concat(push_job:stderr_result(), "\n")
+							
 							vim.schedule(function()
-								vim.notify(
-									"Failed to push changes: "
-										.. table.concat(push_job:stderr_result(), "\n")
-										.. "\n"
-										.. table.concat(push_job:result(), "\n")
-								)
+								if snacks then
+									update_window({
+										"❌ Git Push Failed",
+										"",
+										"📝 Commit message: " .. input,
+										"📁 Working directory: " .. cwd,
+										"",
+										"✅ Commit was successful",
+										"❌ Push failed",
+										"",
+										"🔍 Error details:",
+										"",
+										unpack(push_job:stderr_result())
+									})
+									snacks.notifier.error("Git push failed")
+								else
+									vim.notify(error_msg)
+									close_window()
+								end
 							end)
 							return
 						end
 
 						vim.schedule(function()
-							vim.cmd("Git")
-							vim.notify("Changes committed and pushed")
+							if snacks then
+								update_window({
+									"🎉 Git Commit & Push Successful!",
+									"",
+									"📝 Commit message: " .. input,
+									"📁 Working directory: " .. cwd,
+									"",
+									"✅ Changes committed and pushed to remote",
+									"",
+									"Press :q to close this window"
+								})
+								snacks.notifier.success("Changes committed and pushed successfully")
+							else
+								vim.cmd("Git")
+								vim.notify("Changes committed and pushed")
+								close_window()
+							end
 						end)
 					end,
 				}):start()

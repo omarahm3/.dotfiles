@@ -77,26 +77,11 @@ end
 
 set -gx CONDA_AUTO_ACTIVATE_BASE false
 
-~/.local/bin/mise activate fish | source
-# envio DO NOT MODIFY
- bass source /home/mrgeek/.envio/setenv.sh
+set -x N_PREFIX "$HOME/n"; contains "$N_PREFIX/bin" $PATH; or set -a PATH "$N_PREFIX/bin"  # Added by n-install (see http://git.io/n-install-repo).
 
-# >>> conda initialize >>>
-# !! Contents within this block are managed by 'conda init' !!
-# if test -f /home/mrgeek/anaconda3/bin/conda
-#     eval /home/mrgeek/anaconda3/bin/conda "shell.fish" "hook" $argv | source
-# else
-#     if test -f "/home/mrgeek/anaconda3/etc/fish/conf.d/conda.fish"
-#         . "/home/mrgeek/anaconda3/etc/fish/conf.d/conda.fish"
-#     else
-#         set -x PATH "/home/mrgeek/anaconda3/bin" $PATH
-#     end
-# end
-# <<< conda initialize <<<
-
-
-# envio DO NOT MODIFY
-bass source /home/mrgeek/.envio/setenv.sh
+# Added by LM Studio CLI (lms)
+set -gx PATH $PATH /home/mrgeek/.lmstudio/bin
+# End of LM Studio CLI section
 
 
 set -x N_PREFIX "$HOME/n"; contains "$N_PREFIX/bin" $PATH; or set -a PATH "$N_PREFIX/bin"  # Added by n-install (see http://git.io/n-install-repo).
