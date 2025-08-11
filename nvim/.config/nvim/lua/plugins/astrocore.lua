@@ -297,13 +297,18 @@ local function commit_push()
 
 						vim.schedule(function()
 							if snacks then
-                    append_lines({ "", "🎉 Git Commit & Push Successful!", "", "✅ Changes committed and pushed to remote", "", "Press q to close" })
-								show_notification("Changes committed and pushed successfully", "info")
-							else
-								vim.cmd("Git")
-								vim.notify("Changes committed and pushed")
-								close_window()
-							end
+                                        append_lines({ "", "🎉 Git Commit & Push Successful!", "", "✅ Changes committed and pushed to remote", "", "Press q to close" })
+                    show_notification("Changes committed and pushed successfully", "info")
+                    
+                    -- Run git status to refresh
+                    vim.schedule(function()
+                      vim.cmd("Git")
+                    end)
+                  else
+                    vim.cmd("Git")
+                    vim.notify("Changes committed and pushed")
+                    close_window()
+                  end
 						end)
 					end,
 				}):start()
