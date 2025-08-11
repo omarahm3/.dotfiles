@@ -106,6 +106,21 @@ local function commit_push()
 		local win_id = nil
 		local buf_id = nil
 		
+		-- Function to set initial content
+		local function set_initial_content(buf)
+			local lines = {
+				"🔄 Starting git commit and push...",
+				"",
+				"📝 Commit message: " .. input,
+				"📁 Working directory: " .. cwd,
+				"",
+				"⏳ Please wait..."
+			}
+			vim.api.nvim_buf_set_option(buf, "modifiable", true)
+			vim.api.nvim_buf_set_lines(buf, 0, -1, false, lines)
+			vim.api.nvim_buf_set_option(buf, "modifiable", false)
+		end
+		
 		if snacks then
 			-- Try to create window with snacks
 			local ok, result = pcall(function()
@@ -121,27 +136,36 @@ local function commit_push()
 					},
 					on_create = function(win, buf)
 						buf_id = buf
+						win_id = win
 						-- Set buffer options
 						vim.api.nvim_buf_set_option(buf, "modifiable", false)
 						vim.api.nvim_buf_set_option(buf, "buftype", "nofile")
 						vim.api.nvim_buf_set_option(buf, "filetype", "git")
 						
 						-- Add initial content
-						local lines = {
-							"🔄 Starting git commit and push...",
-							"",
-							"📝 Commit message: " .. input,
-							"📁 Working directory: " .. cwd,
-							"",
-							"⏳ Please wait..."
-						}
-						vim.api.nvim_buf_set_lines(buf, 0, -1, false, lines)
+						set_initial_content(buf)
 					end
 				})
 			end)
 			
 			if ok then
-				win_id = result
+				-- If snacks.win returns a window ID directly
+				if type(result) == "number" then
+					win_id = result
+					buf_id = vim.api.nvim_win_get_buf(win_id)
+					set_initial_content(buf_id)
+				else
+					-- If snacks.win doesn't return window ID, try to get it from the buffer
+					if buf_id then
+						-- Find the window that contains this buffer
+						for _, win in ipairs(vim.api.nvim_list_wins()) do
+							if vim.api.nvim_win_get_buf(win) == buf_id then
+								win_id = win
+								break
+							end
+						end
+					end
+				end
 			else
 				-- Fallback: create a simple floating window
 				show_notification("Snacks window creation failed, using fallback", "warn")
@@ -162,17 +186,49 @@ local function commit_push()
 				vim.api.nvim_buf_set_option(buf_id, "filetype", "git")
 				
 				-- Add initial content
-				local lines = {
-					"🔄 Starting git commit and push...",
-					"",
-					"📝 Commit message: " .. input,
-					"📁 Working directory: " .. cwd,
-					"",
-					"⏳ Please wait..."
-				}
-				vim.api.nvim_buf_set_lines(buf_id, 0, -1, false, lines)
+				set_initial_content(buf_id)
 			end
+		else
+			-- No snacks available, create a simple floating window
+			win_id = vim.api.nvim_open_win(vim.api.nvim_create_buf(false, true), true, {
+				relative = "editor",
+				width = math.floor(vim.o.columns * 0.6),
+				height = math.floor(vim.o.lines * 0.4),
+				row = math.floor(vim.o.lines * 0.3),
+				col = math.floor(vim.o.columns * 0.2),
+				style = "minimal",
+				border = "rounded",
+			})
+			buf_id = vim.api.nvim_win_get_buf(win_id)
+			
+			-- Set buffer options
+			vim.api.nvim_buf_set_option(buf_id, "modifiable", false)
+			vim.api.nvim_buf_set_option(buf_id, "buftype", "nofile")
+			vim.api.nvim_buf_set_option(buf_id, "filetype", "git")
+			
+			-- Add initial content
+			set_initial_content(buf_id)
 		end
+		
+		-- Ensure window is visible and has content
+		vim.schedule(function()
+			if win_id and buf_id and vim.api.nvim_win_is_valid(win_id) then
+				-- Force redraw and ensure content is visible
+				vim.api.nvim_win_set_cursor(win_id, {1, 0})
+				vim.cmd("redraw!")
+				
+				-- Debug: Check if content is actually there
+				local lines = vim.api.nvim_buf_get_lines(buf_id, 0, -1, false)
+				if #lines == 0 then
+					show_notification("Window created but content is empty, retrying...", "warn")
+					set_initial_content(buf_id)
+				else
+					show_notification("Window created successfully with " .. #lines .. " lines", "info")
+				end
+			else
+				show_notification("Failed to create window or window is invalid", "error")
+			end
+		end)
 
 		-- Function to update the window content
 		local function update_window(content)
