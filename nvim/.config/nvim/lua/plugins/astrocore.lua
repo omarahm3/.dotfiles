@@ -112,10 +112,29 @@ local function commit_push()
         local buf_id = nil
         local commit_job_handle = nil
         local push_job_handle = nil
-		
-		-- Function to set initial content
-        local function set_initial_content(buf)
-          local lines = {
+        
+        -- Create a simple floating window (no snacks dependency for window creation)
+        local buf = vim.api.nvim_create_buf(false, true)
+        win_id = vim.api.nvim_open_win(buf, true, {
+            relative = "editor",
+            width = math.floor(vim.o.columns * 0.6),
+            height = math.floor(vim.o.lines * 0.4),
+            row = math.floor(vim.o.lines * 0.3),
+            col = math.floor(vim.o.columns * 0.2),
+            style = "minimal",
+            border = "rounded",
+        })
+        buf_id = buf
+        
+        -- Set buffer options
+        vim.bo[buf_id].modifiable = true
+        vim.bo[buf_id].buftype = "nofile"
+        vim.bo[buf_id].filetype = "git"
+        vim.bo[buf_id].bufhidden = "wipe"
+        vim.bo[buf_id].swapfile = false
+        
+        -- Set initial content
+        local initial_lines = {
             "🔄 Starting git commit and push...",
             "",
             "📝 Commit message: " .. input,
@@ -123,116 +142,20 @@ local function commit_push()
             "",
             "⏳ Please wait...",
             "",
-          }
-          vim.bo[buf].modifiable = true
-          vim.api.nvim_buf_set_lines(buf, 0, -1, false, lines)
-          vim.bo[buf].modifiable = false
-        end
-
-        local function append_lines(buf, new_lines)
-          if type(new_lines) == "string" then
-            new_lines = { new_lines }
-          end
-          if not (buf and vim.api.nvim_buf_is_valid(buf)) then return end
-          vim.bo[buf].modifiable = true
-          vim.api.nvim_buf_set_lines(buf, -1, -1, false, new_lines)
-          vim.bo[buf].modifiable = false
-        end
-		
-		if snacks then
-			-- Try to create window with snacks
-			local ok, result = pcall(function()
-				return snacks.win({
-					title = "Git Commit & Push",
-					width = 0.6,
-					height = 0.4,
-					wo = {
-						wrap = true,
-						spell = false,
-						signcolumn = "no",
-						statuscolumn = " ",
-					},
-					on_create = function(win, buf)
-						buf_id = buf
-						win_id = win
-                    -- Set buffer options
-                    vim.bo[buf].modifiable = true
-                    vim.bo[buf].buftype = "nofile"
-                    vim.bo[buf].filetype = "git"
-                    vim.bo[buf].bufhidden = "wipe"
-                    vim.bo[buf].swapfile = false
-						
-						-- Add initial content
-						set_initial_content(buf)
-					end
-				})
-			end)
-			
-			if ok then
-				-- If snacks.win returns a window ID directly
-				if type(result) == "number" then
-					win_id = result
-					buf_id = vim.api.nvim_win_get_buf(win_id)
-					set_initial_content(buf_id)
-				else
-					-- If snacks.win doesn't return window ID, try to get it from the buffer
-					if buf_id then
-						-- Find the window that contains this buffer
-						for _, win in ipairs(vim.api.nvim_list_wins()) do
-							if vim.api.nvim_win_get_buf(win) == buf_id then
-								win_id = win
-								break
-							end
-						end
-					end
-				end
-			else
-				-- Fallback: create a simple floating window
-				show_notification("Snacks window creation failed, using fallback", "warn")
-				win_id = vim.api.nvim_open_win(vim.api.nvim_create_buf(false, true), true, {
-					relative = "editor",
-					width = math.floor(vim.o.columns * 0.6),
-					height = math.floor(vim.o.lines * 0.4),
-					row = math.floor(vim.o.lines * 0.3),
-					col = math.floor(vim.o.columns * 0.2),
-					style = "minimal",
-					border = "rounded",
-				})
-				buf_id = vim.api.nvim_win_get_buf(win_id)
-				
-                -- Set buffer options
-                vim.bo[buf_id].modifiable = true
-                vim.bo[buf_id].buftype = "nofile"
-                vim.bo[buf_id].filetype = "git"
-                vim.bo[buf_id].bufhidden = "wipe"
-                vim.bo[buf_id].swapfile = false
-				
-				-- Add initial content
-				set_initial_content(buf_id)
-			end
-		else
-            -- No snacks available, create a simple floating window
-			win_id = vim.api.nvim_open_win(vim.api.nvim_create_buf(false, true), true, {
-				relative = "editor",
-				width = math.floor(vim.o.columns * 0.6),
-				height = math.floor(vim.o.lines * 0.4),
-				row = math.floor(vim.o.lines * 0.3),
-				col = math.floor(vim.o.columns * 0.2),
-				style = "minimal",
-				border = "rounded",
-			})
-			buf_id = vim.api.nvim_win_get_buf(win_id)
-			
-			-- Set buffer options
+        }
+        vim.api.nvim_buf_set_lines(buf_id, 0, -1, false, initial_lines)
+        vim.bo[buf_id].modifiable = false
+        
+        -- Function to append lines to the buffer
+        local function append_lines(new_lines)
+            if type(new_lines) == "string" then
+                new_lines = { new_lines }
+            end
+            if not (buf_id and vim.api.nvim_buf_is_valid(buf_id)) then return end
             vim.bo[buf_id].modifiable = true
-            vim.bo[buf_id].buftype = "nofile"
-            vim.bo[buf_id].filetype = "git"
-            vim.bo[buf_id].bufhidden = "wipe"
-            vim.bo[buf_id].swapfile = false
-			
-			-- Add initial content
-			set_initial_content(buf_id)
-		end
+            vim.api.nvim_buf_set_lines(buf_id, -1, -1, false, new_lines)
+            vim.bo[buf_id].modifiable = false
+        end
 		
         -- Ensure window is visible and has content
         vim.schedule(function()
@@ -297,14 +220,14 @@ local function commit_push()
           on_stdout = function(_, data)
             if data and data ~= "" then
               vim.schedule(function()
-                append_lines(buf_id, data)
+                append_lines(data)
               end)
             end
           end,
           on_stderr = function(_, data)
             if data and data ~= "" then
               vim.schedule(function()
-                append_lines(buf_id, data)
+                append_lines(data)
               end)
             end
           end,
@@ -314,13 +237,13 @@ local function commit_push()
 					
 												vim.schedule(function()
 								if snacks then
-                  append_lines(buf_id, {
+                  append_lines({
                     "",
                     "❌ Git Commit Failed",
                     "",
                     "🔍 Error details:",
                   })
-                  append_lines(buf_id, commit_job:stderr_result())
+                  append_lines(commit_job:stderr_result())
 									show_notification("Git commit failed", "error")
 								else
 									vim.notify(error_msg)
@@ -332,7 +255,7 @@ local function commit_push()
 
 				-- Update window with commit success
 				vim.schedule(function()
-              append_lines(buf_id, { "", "✅ Git Commit Successful", "", "🚀 Pushing to remote..." })
+                              append_lines({ "", "✅ Git Commit Successful", "", "🚀 Pushing to remote..." })
 				end)
 
             push_job_handle = Job:new({
@@ -344,14 +267,14 @@ local function commit_push()
               on_stdout = function(_, data)
                 if data and data ~= "" then
                   vim.schedule(function()
-                    append_lines(buf_id, data)
+                    append_lines(data)
                   end)
                 end
               end,
               on_stderr = function(_, data)
                 if data and data ~= "" then
                   vim.schedule(function()
-                    append_lines(buf_id, data)
+                    append_lines(data)
                   end)
                 end
               end,
@@ -361,8 +284,8 @@ local function commit_push()
 							
 							vim.schedule(function()
 								if snacks then
-                      append_lines(buf_id, { "", "❌ Git Push Failed", "", "🔍 Error details:" })
-                      append_lines(buf_id, push_job:stderr_result())
+                      append_lines({ "", "❌ Git Push Failed", "", "🔍 Error details:" })
+                      append_lines(push_job:stderr_result())
 									show_notification("Git push failed", "error")
 								else
 									vim.notify(error_msg)
@@ -374,7 +297,7 @@ local function commit_push()
 
 						vim.schedule(function()
 							if snacks then
-                    append_lines(buf_id, { "", "🎉 Git Commit & Push Successful!", "", "✅ Changes committed and pushed to remote", "", "Press q to close" })
+                    append_lines({ "", "🎉 Git Commit & Push Successful!", "", "✅ Changes committed and pushed to remote", "", "Press q to close" })
 								show_notification("Changes committed and pushed successfully", "info")
 							else
 								vim.cmd("Git")
