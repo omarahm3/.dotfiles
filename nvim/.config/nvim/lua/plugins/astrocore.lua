@@ -11,6 +11,23 @@ local function get_snacks()
   return ok and snacks or nil
 end
 
+-- Helper function to show notifications safely
+local function show_notification(message, level)
+  local snacks = get_snacks()
+  if snacks and snacks.notifier then
+    -- Try different possible API methods
+    if snacks.notifier[level] then
+      snacks.notifier[level](message)
+    elseif snacks.notifier.notify then
+      snacks.notifier.notify(message, { level = level })
+    else
+      vim.notify(message, vim.log.levels[level:upper()] or vim.log.levels.INFO)
+    end
+  else
+    vim.notify(message, vim.log.levels[level:upper()] or vim.log.levels.INFO)
+  end
+end
+
 local function git_create_branch()
 	vim.ui.input({
 		prompt = "Branch Name: ",
@@ -61,16 +78,17 @@ end
 local function commit_push()
 	local snacks = get_snacks()
 	
+	-- Debug: Check if snacks is available
+	if not snacks then
+		vim.notify("Snacks not available, using fallback notifications", vim.log.levels.WARN)
+	end
+	
 	vim.ui.input({
 		prompt = "commit message: ",
 	}, function(input)
 		if input == nil or input == "" then
 			vim.schedule(function()
-				if snacks then
-					snacks.notifier.error("Commit message cannot be empty")
-				else
-					vim.notify("Commit message cannot be empty")
-				end
+				show_notification("Commit message cannot be empty", "error")
 			end)
 			return
 		end
@@ -79,11 +97,7 @@ local function commit_push()
 
 		if cwd == nil then
 			vim.schedule(function()
-				if snacks then
-					snacks.notifier.error("Unknown working directory")
-				else
-					vim.notify("unknown working directory")
-				end
+				show_notification("Unknown working directory", "error")
 			end)
 			return
 		end
@@ -93,35 +107,71 @@ local function commit_push()
 		local buf_id = nil
 		
 		if snacks then
-			win_id = snacks.win({
-				title = "Git Commit & Push",
-				width = 0.6,
-				height = 0.4,
-				wo = {
-					wrap = true,
-					spell = false,
-					signcolumn = "no",
-					statuscolumn = " ",
-				},
-				on_create = function(win, buf)
-					buf_id = buf
-					-- Set buffer options
-					vim.api.nvim_buf_set_option(buf, "modifiable", false)
-					vim.api.nvim_buf_set_option(buf, "buftype", "nofile")
-					vim.api.nvim_buf_set_option(buf, "filetype", "git")
-					
-					-- Add initial content
-					local lines = {
-						"🔄 Starting git commit and push...",
-						"",
-						"📝 Commit message: " .. input,
-						"📁 Working directory: " .. cwd,
-						"",
-						"⏳ Please wait..."
-					}
-					vim.api.nvim_buf_set_lines(buf, 0, -1, false, lines)
-				end
-			})
+			-- Try to create window with snacks
+			local ok, result = pcall(function()
+				return snacks.win({
+					title = "Git Commit & Push",
+					width = 0.6,
+					height = 0.4,
+					wo = {
+						wrap = true,
+						spell = false,
+						signcolumn = "no",
+						statuscolumn = " ",
+					},
+					on_create = function(win, buf)
+						buf_id = buf
+						-- Set buffer options
+						vim.api.nvim_buf_set_option(buf, "modifiable", false)
+						vim.api.nvim_buf_set_option(buf, "buftype", "nofile")
+						vim.api.nvim_buf_set_option(buf, "filetype", "git")
+						
+						-- Add initial content
+						local lines = {
+							"🔄 Starting git commit and push...",
+							"",
+							"📝 Commit message: " .. input,
+							"📁 Working directory: " .. cwd,
+							"",
+							"⏳ Please wait..."
+						}
+						vim.api.nvim_buf_set_lines(buf, 0, -1, false, lines)
+					end
+				})
+			end)
+			
+			if ok then
+				win_id = result
+			else
+				-- Fallback: create a simple floating window
+				show_notification("Snacks window creation failed, using fallback", "warn")
+				win_id = vim.api.nvim_open_win(vim.api.nvim_create_buf(false, true), true, {
+					relative = "editor",
+					width = math.floor(vim.o.columns * 0.6),
+					height = math.floor(vim.o.lines * 0.4),
+					row = math.floor(vim.o.lines * 0.3),
+					col = math.floor(vim.o.columns * 0.2),
+					style = "minimal",
+					border = "rounded",
+				})
+				buf_id = vim.api.nvim_win_get_buf(win_id)
+				
+				-- Set buffer options
+				vim.api.nvim_buf_set_option(buf_id, "modifiable", false)
+				vim.api.nvim_buf_set_option(buf_id, "buftype", "nofile")
+				vim.api.nvim_buf_set_option(buf_id, "filetype", "git")
+				
+				-- Add initial content
+				local lines = {
+					"🔄 Starting git commit and push...",
+					"",
+					"📝 Commit message: " .. input,
+					"📁 Working directory: " .. cwd,
+					"",
+					"⏳ Please wait..."
+				}
+				vim.api.nvim_buf_set_lines(buf_id, 0, -1, false, lines)
+			end
 		end
 
 		-- Function to update the window content
@@ -152,24 +202,24 @@ local function commit_push()
 				if commit_return_val ~= 0 then
 					local error_msg = "Failed to commit changes: " .. table.concat(commit_job:stderr_result(), "\n")
 					
-					vim.schedule(function()
-						if snacks then
-							update_window({
-								"❌ Git Commit Failed",
-								"",
-								"📝 Commit message: " .. input,
-								"📁 Working directory: " .. cwd,
-								"",
-								"🔍 Error details:",
-								"",
-								unpack(commit_job:stderr_result())
-							})
-							snacks.notifier.error("Git commit failed")
-						else
-							vim.notify(error_msg)
-							close_window()
-						end
-					end)
+												vim.schedule(function()
+								if snacks then
+									update_window({
+										"❌ Git Commit Failed",
+										"",
+										"📝 Commit message: " .. input,
+										"📁 Working directory: " .. cwd,
+										"",
+										"🔍 Error details:",
+										"",
+										unpack(commit_job:stderr_result())
+									})
+									show_notification("Git commit failed", "error")
+								else
+									vim.notify(error_msg)
+									close_window()
+								end
+							end)
 					return
 				end
 
@@ -210,7 +260,7 @@ local function commit_push()
 										"",
 										unpack(push_job:stderr_result())
 									})
-									snacks.notifier.error("Git push failed")
+									show_notification("Git push failed", "error")
 								else
 									vim.notify(error_msg)
 									close_window()
@@ -231,7 +281,7 @@ local function commit_push()
 									"",
 									"Press :q to close this window"
 								})
-								snacks.notifier.success("Changes committed and pushed successfully")
+								show_notification("Changes committed and pushed successfully", "info")
 							else
 								vim.cmd("Git")
 								vim.notify("Changes committed and pushed")
