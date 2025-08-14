@@ -38,3 +38,4 @@
 [cola]
 	theme = flat-light-green
 	icontheme = light
+	startupmode = folder
