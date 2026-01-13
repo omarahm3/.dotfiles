@@ -1,0 +1,21 @@
+[pyprland]
+plugins = [
+  "expose",
+  "scratchpads",
+]
+
+[expose]
+# show_all_workspaces = true
+# include_special = true
+# inactive_opacity = 0.9
+
+[scratchpads]
+
+  [scratchpads.term]
+  command   = "kitty --class sp-term"
+  class     = "sp-term"
+  size      = "60% 60%"        # width height
+  position  = "20% 20%"        # centered for 60%x60%
+  animation = "fromTop"
+  lazy      = true
+  unfocus   = "hide"
