@@ -1,0 +1,31 @@
+{
+  "includeCoAuthoredBy": false,
+  "enabledPlugins": {
+    "feature-dev@claude-code-plugins": true,
+    "pr-review-toolkit@claude-code-plugins": false,
+    "commit-commands@claude-code-plugins": false,
+    "nextjs-vercel-pro@claude-code-templates": false,
+    "security-pro@claude-code-templates": false,
+    "devops-automation@claude-code-templates": false,
+    "documentation-generator@claude-code-templates": false,
+    "performance-optimizer@claude-code-templates": false,
+    "development-utilities@claude-code-workflows": false,
+    "code-quality-review@claude-code-workflows": false,
+    "legacy-modernization@claude-code-workflows": false,
+    "multi-platform-apps@claude-code-workflows": false,
+    "cicd-automation@claude-code-workflows": false,
+    "agent-optimization@claude-code-workflows": false,
+    "database-operations@claude-code-workflows": false,
+    "quantitative-trading@claude-code-workflows": false,
+    "payment-processing@claude-code-workflows": false,
+    "claude-code-essentials@claude-code-workflows": false,
+    "full-stack-development@claude-code-workflows": false,
+    "api-development-kit@claude-code-workflows": false,
+    "testing-quality-suite@claude-code-workflows": false,
+    "infrastructure-devops@claude-code-workflows": false,
+    "security-hardening@claude-code-workflows": false,
+    "performance-optimization@claude-code-workflows": false,
+    "cloud-infrastructure@claude-code-workflows": false
+  },
+  "alwaysThinkingEnabled": true
+}
