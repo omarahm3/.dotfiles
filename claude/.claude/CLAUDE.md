@@ -26,6 +26,7 @@
 - **Plan complex tasks**: Use `ultrathink` for architectural decisions
 - **Verify changes**: Run tests/lint after modifications when suite exists
 - **Interrupt early**: Stop and ask if requirements are unclear
+- **Context7 MCP**: Always use Context7 MCP when I need library/API documentation, code generation, setup or configuration steps without me having to explicitly ask
 
 ---
 
