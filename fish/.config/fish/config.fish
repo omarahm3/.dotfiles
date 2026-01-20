@@ -63,6 +63,7 @@ alias ls exa
 alias vim nvim
 alias twork 'tmux a'
 alias tdev 'tmux -Ldevelopment a'
+alias cc 'claude --dangerously-skip-permissions --append-system-prompt-file ~/.claude/system-rules.txt'
 
 # bun
 set --export BUN_INSTALL "$HOME/.bun"
