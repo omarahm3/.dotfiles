@@ -1,9 +1,10 @@
 {
   "includeCoAuthoredBy": false,
+  "model": "opus",
   "enabledPlugins": {
     "feature-dev@claude-code-plugins": true,
-    "typescript-lsp@claude-plugins-official": true
+    "typescript-lsp@claude-plugins-official": true,
+    "pg@aiguide": true
   },
-  "alwaysThinkingEnabled": true,
-  "model": "opus"
+  "alwaysThinkingEnabled": true
 }
