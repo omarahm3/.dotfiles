@@ -64,7 +64,7 @@ alias vim nvim
 alias twork 'tmux a'
 alias tdev 'tmux -Ldevelopment a'
 function cc
-    claude --dangerously-skip-permissions --append-system-prompt-file ~/.claude/system-rules.txt $argv
+    claude --allow-dangerously-skip-permissions --append-system-prompt-file ~/.claude/system-rules.txt $argv
 end
 
 # bun
