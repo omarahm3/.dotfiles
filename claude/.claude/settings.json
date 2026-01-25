@@ -4,7 +4,9 @@
   "enabledPlugins": {
     "feature-dev@claude-code-plugins": true,
     "typescript-lsp@claude-plugins-official": true,
-    "pg@aiguide": true
+    "pg@aiguide": true,
+    "pyright-lsp@claude-plugins-official": true,
+    "gopls-lsp@claude-plugins-official": true
   },
   "alwaysThinkingEnabled": true
 }
