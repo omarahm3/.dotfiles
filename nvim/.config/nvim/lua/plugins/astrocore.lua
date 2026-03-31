@@ -396,7 +396,7 @@ return {
 				},
 				["<C-p>"] = {
 					function()
-						require("telescope.builtin").find_files({ hidden = true, no_ignore = true })
+						Snacks.picker.files({ hidden = true, ignored = true })
 					end,
 					desc = "Find all files",
 				},
