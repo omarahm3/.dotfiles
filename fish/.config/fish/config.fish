@@ -47,7 +47,7 @@ if test $status -eq 0
     zoxide init fish | source
 end
 
-_execute_command bass source ~/.cargo/env
+test -f ~/.cargo/env; and _execute_command bass source ~/.cargo/env
 
 _execute_command nvm use 14.16.0 >/dev/null 2>&1
 
@@ -92,3 +92,5 @@ set -x N_PREFIX "$HOME/n"; contains "$N_PREFIX/bin" $PATH; or set -a PATH "$N_PR
 
 # opencode
 fish_add_path /home/mrgeek/.opencode/bin
+
+set -x N_PREFIX "$HOME/n"; contains "$N_PREFIX/bin" $PATH; or set -a PATH "$N_PREFIX/bin"  # Added by n-install (see http://git.io/n-install-repo).
