@@ -335,6 +335,7 @@ return {
 		diagnostics = {
 			virtual_text = true,
 			underline = true,
+			jump = { on_jump = "float" },
 		},
 		options = {
 			opt = { -- vim.opt.<key>
