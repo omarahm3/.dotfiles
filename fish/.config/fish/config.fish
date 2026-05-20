@@ -70,8 +70,8 @@ set --export PATH $BUN_INSTALL/bin $PATH
 
 # pnpm
 set -gx PNPM_HOME "/home/mrgeek/.local/share/pnpm"
-if not string match -q -- $PNPM_HOME $PATH
-  set -gx PATH "$PNPM_HOME" $PATH
+if not string match -q -- "$PNPM_HOME/bin" $PATH
+  set -gx PATH "$PNPM_HOME/bin" $PATH
 end
 # pnpm end
 
@@ -86,4 +86,6 @@ set -gx PATH $PATH /home/mrgeek/.lmstudio/bin
 
 set -x N_PREFIX "$HOME/n"; contains "$N_PREFIX/bin" $PATH; or set -a PATH "$N_PREFIX/bin"  # Added by n-install (see http://git.io/n-install-repo).
 
-alias claude="/home/mrgeek/.claude/local/claude"
+
+# opencode
+fish_add_path /home/mrgeek/.opencode/bin
