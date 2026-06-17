@@ -1,21 +1,91 @@
 #!/bin/bash
 # vim:ft=bash
 
-if [[ -z $1 ]]; then
-  echo "you must enter a directory to sync"
-	exit 1
+set -euo pipefail
+
+usage() {
+  cat <<'EOF'
+Usage: sync [--ignore|--override] <directory>
+
+  --ignore     skip files that conflict with existing targets, sync the rest
+  --override   remove conflicting targets first, then sync (dotfiles win)
+  -h, --help   show this help
+
+Without a flag, sync aborts on conflicts (default stow behaviour).
+EOF
+}
+
+# run stow (and any per-package post steps), forwarding extra stow args
+do_stow() {
+  local d="$1"; shift
+  local extra=("$@")
+  case "$d" in
+    fonts)
+      stow -vRt ~ "${extra[@]}" "$d"
+      fc-cache -fv
+      ;;
+    st)
+      stow -vRt ~ "${extra[@]}" "$d"
+      cd ~/.st && sudo make install clean && cd ~/.dotfiles || return
+      ;;
+    *)
+      stow -vRt ~ "${extra[@]}" "$d"
+      ;;
+  esac
+}
+
+# print conflicting target paths (relative to ~) from a dry run
+detect_conflicts() {
+  stow -nvRt ~ "$1" 2>&1 \
+    | grep -oP '(?<=over existing target ).*?(?= since)' \
+    || true
+}
+
+# escape regex metacharacters so a filename matches literally
+escape_regex() {
+  printf '%s' "$1" | sed 's/[^[:alnum:]_]/\\&/g'
+}
+
+mode="default"
+args=()
+while [[ $# -gt 0 ]]; do
+  case "$1" in
+    --ignore)   mode="ignore";   shift ;;
+    --override) mode="override"; shift ;;
+    -h|--help)  usage; exit 0 ;;
+    -*)         echo "unknown option: $1" >&2; usage; exit 1 ;;
+    *)          args+=("$1");    shift ;;
+  esac
+done
+
+if [[ ${#args[@]} -eq 0 ]]; then
+  echo "you must enter a directory to sync" >&2
+  exit 1
 fi
 
-case "$1" in
-  fonts)
-    stow -vRt ~ "$1"
-    fc-cache -fv
+dir="${args[0]}"
+
+case "$mode" in
+  override)
+    mapfile -t conflicts < <(detect_conflicts "$dir")
+    for t in "${conflicts[@]}"; do
+      [[ -n "$t" ]] || continue
+      echo "override: removing existing $HOME/$t"
+      rm -rf "$HOME/$t"
+    done
+    do_stow "$dir"
     ;;
-  st)
-    stow -vRt ~ "$1"
-    cd ~/.st && sudo make install clean && cd ~/.dotfiles || return
+  ignore)
+    mapfile -t conflicts < <(detect_conflicts "$dir")
+    ignore_args=()
+    for t in "${conflicts[@]}"; do
+      [[ -n "$t" ]] || continue
+      echo "ignore: skipping $t"
+      ignore_args+=("--ignore=$(escape_regex "$(basename "$t")")$")
+    done
+    do_stow "$dir" "${ignore_args[@]}"
     ;;
   *)
-    stow -vRt ~ "$1"
+    do_stow "$dir"
     ;;
 esac
