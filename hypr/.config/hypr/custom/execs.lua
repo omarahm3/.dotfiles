@@ -1,0 +1,6 @@
+hl.on("hyprland.start", function()
+    hl.exec_cmd("tmux -Ldevelopment new -s General -d")
+    hl.exec_cmd("tmux new -s General -d")
+    hl.exec_cmd("/usr/bin/pypr")
+    hl.exec_cmd("systemctl --user start vicinae.service")
+end)
