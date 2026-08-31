@@ -41,8 +41,8 @@ rename_workspace = "prefix+shift+w"
 new_workspace = "prefix+shift+o"
 close_workspace = "prefix+shift+q"
 
-# Spaces panel. prefix+shift+h/j/k/l is hardcoded pane-swap, so space cycling
-# lives on ctrl+alt, the only modifier family herdr documents as terminal-safe.
+# Spaces panel. Space cycling lives on ctrl+alt, the only modifier family herdr
+# documents as terminal-safe.
 switch_workspace = "prefix+shift+1..9"
 previous_workspace = "ctrl+alt+k"
 next_workspace = "ctrl+alt+j"
@@ -61,12 +61,24 @@ focus_pane_right = "prefix+l"
 cycle_pane_next = ""
 cycle_pane_previous = ""
 
-split_vertical = "prefix+v"
-split_horizontal = "prefix+minus"
+# swap_pane_left/down/up/right are configurable but left unbound: .tmux.conf never
+# bound swap, and the vim-capital family is already spent on the tmux popups
+# (prefix+shift+k the director, prefix+shift+d the dotfiles jump).
+
+# tmux defaults: prefix+% split-window -h (side by side) = herdr "split right",
+# prefix+" split-window -v (stacked) = herdr "split down". Both tmux keys are
+# kept alongside herdr's own prefix+v / prefix+minus.
+split_vertical = ["prefix+v", "prefix+%"]
+split_horizontal = ["prefix+minus", 'prefix+"']
 close_pane = "prefix+x"
 zoom = "prefix+z"
 rename_pane = "prefix+shift+p"
 edit_scrollback = "prefix+e"
+
+# tmux: set-window-option -g mode-keys vi + prefix+[ enters copy mode.
+# The vi selection binds (v begin-selection, y copy-pipe wl-copy) have no config
+# surface here; herdr copies to the system clipboard itself, see ui.copy_on_select.
+copy_mode = "prefix+["
 
 # Navigate mode (prefix+g): j/k walk the Spaces list like a vim buffer,
 # arrows take over vertical pane movement. Left/right arrows are hardcoded
@@ -150,3 +162,15 @@ pane_history = true
 
 [advanced]
 scrollback_limit_bytes = 10000000
+
+# Not portable from .tmux.conf:
+#   bind-key C-a send-prefix — no config needed, herdr sends a literal prefix key
+#     when the prefix is pressed twice, and rejects prefix+<prefix> as reserved.
+#   bind -n M-c clear-history — herdr exposes no clear-scrollback action or API
+#     method, so there is nothing to bind. Scrollback is capped by
+#     advanced.scrollback_limit_bytes above instead.
+#   bind-key -T copy-mode-vi v/y — copy mode has no per-key config surface;
+#     ui.copy_on_select handles selection to system clipboard.
+#   set -g base-index 1 — herdr tabs and spaces are already 1-indexed.
+#   default-terminal / terminal-overrides (Tc, Smulx, Setulc) — herdr negotiates
+#     truecolor and underline styling with the host terminal itself.
