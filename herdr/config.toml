@@ -1,0 +1,124 @@
+# herdr configuration — ported from ~/.dotfiles/tmux/.tmux.conf
+
+onboarding = false
+
+[theme]
+# tmux: set -g @plugin 'rose-pine/tmux' + @rose_pine_variant 'main'
+name = "rose-pine"
+
+[terminal]
+# tmux: default-terminal / terminal-overrides are handled by herdr itself
+new_cwd = "follow"
+
+[keys]
+# tmux: unbind C-b ; set-option -g prefix C-a
+prefix = "ctrl+a"
+
+# tmux: bind r source-file ~/.tmux.conf
+reload_config = "prefix+r"
+resize_mode = "prefix+shift+r"
+
+# tmux: bind-key a last-window / bind -r ^ last-window
+# herdr has no last-tab action; last_pane is the closest equivalent
+last_pane = "prefix+a"
+
+# tmux: prefix+p ran the fzf pane/session switcher, so prefix+p is the
+# native workspace picker here and previous_tab stays unbound
+workspace_picker = "prefix+p"
+previous_tab = ""
+next_tab = "prefix+n"
+goto = "prefix+g"
+
+new_tab = "prefix+c"
+close_tab = "prefix+shift+x"
+rename_tab = "prefix+shift+t"
+switch_tab = "prefix+1..9"
+
+rename_workspace = "prefix+shift+w"
+# moved off their herdr defaults so the tmux capital-letter popups keep
+# their keys: prefix+shift+n (fzf home) and prefix+shift+d (dotfiles)
+new_workspace = "prefix+shift+o"
+close_workspace = "prefix+shift+q"
+
+# tmux: vim-like pane switching (bind -r h/j/k/l select-pane)
+focus_pane_left = "prefix+h"
+focus_pane_down = "prefix+j"
+focus_pane_up = "prefix+k"
+focus_pane_right = "prefix+l"
+cycle_pane_next = "prefix+tab"
+cycle_pane_previous = "prefix+shift+tab"
+
+split_vertical = "prefix+v"
+split_horizontal = "prefix+minus"
+close_pane = "prefix+x"
+zoom = "prefix+z"
+rename_pane = "prefix+shift+p"
+edit_scrollback = "prefix+e"
+
+toggle_sidebar = "prefix+b"
+detach = "prefix+q"
+help = "prefix+?"
+settings = "prefix+s"
+
+# tmux: bind-key -r f display-popup -E "~/.local/bin/tmux-sessionizer"
+[[keys.command]]
+key = "prefix+f"
+type = "popup"
+command = "/home/mrgeek/.local/bin/herdr-sessionizer"
+width = "80%"
+height = "80%"
+
+# tmux: bind-key -r D run-shell "~/.local/bin/tmux-sessionizer ~/.dotfiles"
+[[keys.command]]
+key = "prefix+shift+d"
+type = "shell"
+command = "/home/mrgeek/.local/bin/herdr-sessionizer /home/mrgeek/.dotfiles"
+
+# tmux: bind-key -r K display-popup -E "~/.local/bin/tmux-director"
+[[keys.command]]
+key = "prefix+shift+k"
+type = "popup"
+command = "/home/mrgeek/.local/bin/herdr-director"
+width = "80%"
+height = "80%"
+
+# tmux: bind-key -r N display-popup -E "~/.tmux-scripts/fzf-home"
+[[keys.command]]
+key = "prefix+shift+n"
+type = "popup"
+command = "/home/mrgeek/.local/bin/herdr-home"
+width = "80%"
+height = "80%"
+
+# tmux: bind-key -r F display-popup -E "~/.local/bin/tmux-runs 'common-commands'"
+[[keys.command]]
+key = "prefix+shift+f"
+type = "popup"
+command = "/home/mrgeek/.local/bin/herdr-runs common-commands"
+width = "80%"
+height = "80%"
+
+# tmux: bind-key -r i run-shell "tmux neww tmux-cht"
+[[keys.command]]
+key = "prefix+i"
+type = "popup"
+command = "/home/mrgeek/.local/bin/herdr-cht"
+width = "80%"
+height = "80%"
+
+[ui]
+# tmux: set -g status-style 'bg=#333333 fg=#5eacd3'
+accent = "#5eacd3"
+pane_outer_borders = false
+copy_on_select = true
+confirm_close = true
+
+[session]
+# tmux: tmux-resurrect + tmux-continuum
+resume_agents_on_restore = true
+
+[experimental]
+pane_history = true
+
+[advanced]
+scrollback_limit_bytes = 10000000

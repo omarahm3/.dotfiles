@@ -1,0 +1,19 @@
+#!/usr/bin/env bash
+# Port of tmux-runs + tmux-windowizer: pick a saved command, run it in a new tab.
+
+source "$(dirname "$(readlink -f "$0")")/herdr-lib.sh"
+
+list="$HERDR_LISTS_DIR/${1:?usage: herdr-runs <list-name>}"
+[[ -r $list ]] || {
+	printf 'herdr: missing command list: %s\n' "$list" >&2
+	exit 1
+}
+
+selected=$(fzf "${FZF_OPTS[@]}" <"$list")
+[[ -n $selected ]] || exit 0
+
+label=$(cut -d ' ' -f 1 <<<"$selected" | tr './' '__')
+pane=$(herdr_new_tab_pane "$label")
+
+herdr pane run "$pane" bash -lc \
+	"clear && $selected && notify-send -a herdr \"'$selected' is done\"" >/dev/null

@@ -1,0 +1,16 @@
+#!/usr/bin/env bash
+# Port of tmux-sessionizer: one herdr workspace per project directory.
+
+source "$(dirname "$(readlink -f "$0")")/herdr-lib.sh"
+
+if [[ $# -eq 1 ]]; then
+	selected="$1"
+else
+	mapfile -t roots < <(herdr_project_roots)
+	selected=$(fd --min-depth 1 --max-depth 1 --type d --hidden . "${roots[@]}" |
+		fzf "${FZF_OPTS[@]}")
+fi
+
+[[ -n ${selected:-} ]] || exit 0
+
+herdr_open_workspace "$selected"

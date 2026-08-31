@@ -1,0 +1,21 @@
+#!/usr/bin/env bash
+# Port of tmux-cht: cht.sh lookup in a new herdr tab.
+
+source "$(dirname "$(readlink -f "$0")")/herdr-lib.sh"
+
+selected=$(cat "$HERDR_LISTS_DIR/cht-languages" "$HERDR_LISTS_DIR/cht-commands" |
+	fzf "${FZF_OPTS[@]}")
+[[ -n $selected ]] || exit 0
+
+read -r -p "Enter Query: " query
+
+pane=$(herdr_new_tab_pane "cht_$selected")
+
+if grep -qs "$selected" "$HERDR_LISTS_DIR/cht-languages"; then
+	query=${query// /+}
+	herdr pane run "$pane" bash -lc \
+		"echo 'curl cht.sh/$selected/$query/'; curl -s cht.sh/$selected/$query | less" >/dev/null
+else
+	herdr pane run "$pane" bash -lc \
+		"curl -s 'cht.sh/$selected~$query' | less" >/dev/null
+fi

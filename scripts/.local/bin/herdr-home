@@ -1,0 +1,11 @@
+#!/usr/bin/env bash
+# Port of ~/.tmux-scripts/fzf-home: open a workspace on any top-level $HOME dir.
+
+source "$(dirname "$(readlink -f "$0")")/herdr-lib.sh"
+
+selected=$(fd --min-depth 1 --max-depth 1 --type d --hidden . "$HOME" |
+	fzf "${FZF_OPTS[@]}")
+
+[[ -n $selected ]] || exit 0
+
+herdr_open_workspace "$selected"

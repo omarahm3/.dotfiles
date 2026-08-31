@@ -1,0 +1,21 @@
+#!/usr/bin/env bash
+# Port of tmux-director: create a directory under a project root, open it.
+
+export DISABLE_NERD_FETCH=1
+
+source "$(dirname "$(readlink -f "$0")")/herdr-lib.sh"
+
+parent=$(herdr_project_roots |
+	fzf "${FZF_OPTS[@]}" \
+		--preview="fd --min-depth 1 --max-depth 1 --hidden . {1} -X printf '\055> %s\n' {/}" \
+		--preview-window 'right:50%')
+
+[[ -n $parent ]] || exit 0
+
+read -r -p "Directory Name: " name
+[[ -n $name ]] || exit 0
+
+dir="$parent/$name"
+mkdir -p "$dir"
+
+herdr_open_workspace "$dir"
