@@ -1,0 +1,19 @@
+#!/usr/bin/env bash
+# Toggle between the current and previously focused tab within the active space
+# (tmux: bind-key a last-window). History comes from herdr-focus-tracker; herdr
+# has no last_tab action of its own.
+
+source "$(dirname "$(readlink -f "$0")")/herdr-lib.sh"
+
+workspace=$(herdr_focused_workspace_id)
+[[ -n $workspace ]] || exit 0
+
+previous=$(herdr_previous_tab_id "$workspace")
+[[ -n $previous ]] || exit 0
+
+# The tab may have been closed since it was recorded.
+herdr tab list |
+	jq -e --arg id "$previous" 'any(.result.tabs[]; .tab_id == $id)' \
+		>/dev/null || exit 0
+
+herdr tab focus "$previous" >/dev/null

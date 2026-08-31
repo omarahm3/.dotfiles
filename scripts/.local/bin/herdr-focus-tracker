@@ -1,0 +1,252 @@
+#!/usr/bin/env python3
+"""Track herdr focus history so prefix+a and prefix+shift+L can toggle back.
+
+herdr exposes no last_tab or last_workspace action -- only a single global
+last_pane slot -- and it persists just the current focus in session.json. This
+daemon subscribes to the socket event stream and keeps a two-deep history of the
+focused workspace, plus a two-deep tab history per workspace, in a state file
+that herdr-last-space and herdr-last-window read.
+
+Both focus events fire on every move, including repeats for the workspace you
+are already in, so history only shifts when an id actually changes.
+"""
+
+from __future__ import annotations
+
+import errno
+import fcntl
+import json
+import os
+import socket
+import sys
+import time
+from pathlib import Path
+
+SUBSCRIPTIONS = (
+    "workspace.focused",
+    "tab.focused",
+    "workspace.closed",
+    "tab.closed",
+)
+RECONNECT_DELAY_SECONDS = 3.0
+READ_CHUNK_BYTES = 65536
+
+_lock_handle: object | None = None
+
+
+def config_dir() -> Path:
+    xdg = os.environ.get("XDG_CONFIG_HOME")
+    base = Path(xdg) if xdg else Path.home() / ".config"
+    return base / "herdr"
+
+
+def socket_path() -> Path:
+    override = os.environ.get("HERDR_SOCKET_PATH")
+    return Path(override) if override else config_dir() / "herdr.sock"
+
+
+def state_file() -> Path:
+    override = os.environ.get("HERDR_FOCUS_STATE")
+    if override:
+        return Path(override)
+    xdg = os.environ.get("XDG_STATE_HOME")
+    base = Path(xdg) if xdg else Path.home() / ".local" / "state"
+    return base / "herdr" / "focus-history.json"
+
+
+class Connection:
+    """Newline-delimited JSON over the herdr control socket."""
+
+    def __init__(self) -> None:
+        self.sock = socket.socket(socket.AF_UNIX, socket.SOCK_STREAM)
+        self.sock.connect(str(socket_path()))
+        self.buffer = bytearray()
+
+    def __enter__(self) -> Connection:
+        return self
+
+    def __exit__(self, *_exc: object) -> None:
+        self.sock.close()
+
+    def read_message(self) -> dict:
+        while b"\n" not in self.buffer:
+            chunk = self.sock.recv(READ_CHUNK_BYTES)
+            if not chunk:
+                raise ConnectionError("herdr closed the connection")
+            self.buffer.extend(chunk)
+        line, _, rest = bytes(self.buffer).partition(b"\n")
+        self.buffer = bytearray(rest)
+        if not line.strip():
+            return {}
+        try:
+            return json.loads(line)
+        except json.JSONDecodeError:
+            return {}
+
+    def request(self, method: str, params: dict | None = None) -> dict:
+        payload = {"id": "tracker", "method": method, "params": params or {}}
+        self.sock.sendall((json.dumps(payload) + "\n").encode())
+        response = self.read_message()
+        if "error" in response:
+            raise ConnectionError(f"{method} rejected: {response['error']}")
+        return response
+
+
+class History:
+    """current/previous pairs for the workspace and for each workspace's tabs."""
+
+    def __init__(self, path: Path) -> None:
+        self.path = path
+        self.workspace: dict[str, str | None] = {"current": None, "previous": None}
+        self.tabs: dict[str, dict[str, str | None]] = {}
+
+    def load(self) -> None:
+        """Carry history across a tracker restart or a reboot.
+
+        Ids can be stale afterwards -- herdr reassigns them on a fresh session --
+        but the jump scripts check the target still exists before focusing it.
+        """
+        try:
+            stored = json.loads(self.path.read_text())
+        except (OSError, json.JSONDecodeError):
+            return
+        workspace = stored.get("workspace")
+        if isinstance(workspace, dict):
+            for slot in ("current", "previous"):
+                value = workspace.get(slot)
+                if isinstance(value, str):
+                    self.workspace[slot] = value
+        tabs = stored.get("tabs")
+        if isinstance(tabs, dict):
+            for workspace_id, entry in tabs.items():
+                if isinstance(entry, dict):
+                    self.tabs[workspace_id] = {
+                        slot: entry.get(slot) if isinstance(entry.get(slot), str) else None
+                        for slot in ("current", "previous")
+                    }
+
+    def record_workspace(self, workspace_id: str) -> bool:
+        if self.workspace["current"] == workspace_id:
+            return False
+        self.workspace = {"current": workspace_id, "previous": self.workspace["current"]}
+        return True
+
+    def record_tab(self, workspace_id: str, tab_id: str) -> bool:
+        entry = self.tabs.setdefault(workspace_id, {"current": None, "previous": None})
+        if entry["current"] == tab_id:
+            return False
+        self.tabs[workspace_id] = {"current": tab_id, "previous": entry["current"]}
+        return True
+
+    def forget_workspace(self, workspace_id: str) -> None:
+        self.tabs.pop(workspace_id, None)
+        for slot in ("current", "previous"):
+            if self.workspace[slot] == workspace_id:
+                self.workspace[slot] = None
+
+    def forget_tab(self, workspace_id: str, tab_id: str) -> None:
+        entry = self.tabs.get(workspace_id)
+        if not entry:
+            return
+        for slot in ("current", "previous"):
+            if entry[slot] == tab_id:
+                entry[slot] = None
+
+    def save(self) -> None:
+        payload = json.dumps(
+            {"workspace": self.workspace, "tabs": self.tabs}, indent=1, sort_keys=True
+        )
+        self.path.parent.mkdir(parents=True, exist_ok=True)
+        # Write beside the target and rename, so a reader never sees a partial file.
+        tmp = self.path.with_name(self.path.name + ".tmp")
+        tmp.write_text(payload + "\n")
+        tmp.replace(self.path)
+
+
+def apply_event(history: History, envelope: dict) -> bool:
+    data = envelope.get("data") or {}
+    workspace_id = data.get("workspace_id")
+    tab_id = data.get("tab_id")
+    if not workspace_id:
+        return False
+
+    match envelope.get("event"):
+        case "workspace_focused":
+            return history.record_workspace(workspace_id)
+        case "tab_focused":
+            return bool(tab_id) and history.record_tab(workspace_id, tab_id)
+        case "workspace_closed":
+            history.forget_workspace(workspace_id)
+            return True
+        case "tab_closed":
+            if not tab_id:
+                return False
+            history.forget_tab(workspace_id, tab_id)
+            return True
+        case _:
+            return False
+
+
+def seed_from_snapshot(history: History) -> None:
+    """Prime current focus so the first keypress after a restart behaves."""
+    with Connection() as conn:
+        snapshot = conn.request("session.snapshot")["result"]["snapshot"]
+    workspace_id = snapshot.get("focused_workspace_id")
+    if not workspace_id:
+        return
+    history.record_workspace(workspace_id)
+    tab_id = snapshot.get("focused_tab_id")
+    if tab_id:
+        history.record_tab(workspace_id, tab_id)
+    history.save()
+
+
+def follow(history: History) -> None:
+    with Connection() as conn:
+        conn.request(
+            "events.subscribe",
+            {"subscriptions": [{"type": name} for name in SUBSCRIPTIONS]},
+        )
+        while True:
+            if apply_event(history, conn.read_message()):
+                history.save()
+
+
+def claim_single_instance() -> None:
+    """Hold an exclusive lock for the life of the process, or exit quietly.
+
+    The handle is parked in a global on purpose: letting it be collected would
+    close the fd and release the flock while this process is still running.
+    """
+    global _lock_handle
+    lock_dir = Path(os.environ.get("XDG_RUNTIME_DIR") or "/tmp")
+    handle = open(lock_dir / "herdr-focus-tracker.lock", "w")
+    try:
+        fcntl.flock(handle, fcntl.LOCK_EX | fcntl.LOCK_NB)
+    except OSError as exc:
+        if exc.errno in (errno.EACCES, errno.EAGAIN):
+            sys.exit(0)
+        raise
+    _lock_handle = handle
+
+
+def main() -> None:
+    claim_single_instance()
+    history = History(state_file())
+    history.load()
+
+    while True:
+        try:
+            seed_from_snapshot(history)
+            follow(history)
+        except (ConnectionError, OSError) as exc:
+            # herdr is not up yet, or the server restarted. Both are routine.
+            print(f"herdr-focus-tracker: reconnecting ({exc})", file=sys.stderr)
+        time.sleep(RECONNECT_DELAY_SECONDS)
+
+
+if __name__ == "__main__":
+    try:
+        main()
+    except KeyboardInterrupt:
+        pass

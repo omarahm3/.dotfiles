@@ -19,9 +19,15 @@ prefix = "ctrl+a"
 reload_config = "prefix+r"
 resize_mode = "prefix+shift+r"
 
-# tmux: bind-key a last-window / bind -r ^ last-window
-# herdr has no last-tab action; last_pane is the closest equivalent
-last_pane = "prefix+a"
+# tmux: bind-key a last-window / bind -r ^ last-window are served by the
+# herdr-last-window command below, and prefix+shift+l by herdr-last-space.
+# herdr has neither a last_tab nor a last_workspace action, so both read focus
+# history from the herdr-focus-tracker service.
+#
+# tmux: prefix+; last-pane. last_pane is herdr's one built-in back-and-forth and
+# it is global -- the stored pane id is workspace-qualified, so it can cross
+# spaces and tabs. Keeping it on its tmux key leaves prefix+a for last-window.
+last_pane = "prefix+semicolon"
 
 # tmux: prefix+p ran the fzf pane/session switcher, so prefix+p is the
 # native workspace picker here and previous_tab stays unbound
@@ -98,6 +104,19 @@ settings = "prefix+s"
 # ctrl+alt+1..9 focuses agent rows directly, no prefix
 [keys.indexed]
 agents = "ctrl+alt"
+
+# tmux: bind-key a last-window / bind -r ^ last-window
+# Toggles the previous tab inside the active space.
+[[keys.command]]
+key = ["prefix+a", "prefix+^"]
+type = "shell"
+command = "/home/mrgeek/.local/bin/herdr-last-window"
+
+# Toggles the previous space. tmux had no session-level equivalent bound.
+[[keys.command]]
+key = "prefix+shift+l"
+type = "shell"
+command = "/home/mrgeek/.local/bin/herdr-last-space"
 
 # tmux: bind-key -r f display-popup -E "~/.local/bin/tmux-sessionizer"
 [[keys.command]]
