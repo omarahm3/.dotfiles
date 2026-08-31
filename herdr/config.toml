@@ -6,6 +6,7 @@ onboarding = false
 # tmux: set -g @plugin 'rose-pine/tmux' + @rose_pine_variant 'main'
 name = "rose-pine"
 
+auto_switch = false
 [terminal]
 # tmux: default-terminal / terminal-overrides are handled by herdr itself
 new_cwd = "follow"
@@ -40,13 +41,25 @@ rename_workspace = "prefix+shift+w"
 new_workspace = "prefix+shift+o"
 close_workspace = "prefix+shift+q"
 
+# Spaces panel. prefix+shift+h/j/k/l is hardcoded pane-swap, so space cycling
+# lives on ctrl+alt, the only modifier family herdr documents as terminal-safe.
+switch_workspace = "prefix+shift+1..9"
+previous_workspace = "ctrl+alt+k"
+next_workspace = "ctrl+alt+j"
+
+# Agents panel: cycle the attention queue, jump by ctrl+alt+1..9 below
+next_agent = ["prefix+tab", "ctrl+alt+n"]
+previous_agent = ["prefix+shift+tab", "ctrl+alt+p"]
+
 # tmux: vim-like pane switching (bind -r h/j/k/l select-pane)
 focus_pane_left = "prefix+h"
 focus_pane_down = "prefix+j"
 focus_pane_up = "prefix+k"
 focus_pane_right = "prefix+l"
-cycle_pane_next = "prefix+tab"
-cycle_pane_previous = "prefix+shift+tab"
+# panes are reachable directionally above and via last_pane, so prefix+tab
+# is spent on the agent attention queue instead of pane cycling
+cycle_pane_next = ""
+cycle_pane_previous = ""
 
 split_vertical = "prefix+v"
 split_horizontal = "prefix+minus"
@@ -55,10 +68,24 @@ zoom = "prefix+z"
 rename_pane = "prefix+shift+p"
 edit_scrollback = "prefix+e"
 
+# Navigate mode (prefix+g): j/k walk the Spaces list like a vim buffer,
+# arrows take over vertical pane movement. Left/right arrows are hardcoded
+# aliases for h/l, so panes keep all four directions.
+navigate_workspace_up = "k"
+navigate_workspace_down = "j"
+navigate_pane_up = "up"
+navigate_pane_down = "down"
+navigate_pane_left = "h"
+navigate_pane_right = "l"
+
 toggle_sidebar = "prefix+b"
 detach = "prefix+q"
 help = "prefix+?"
 settings = "prefix+s"
+
+# ctrl+alt+1..9 focuses agent rows directly, no prefix
+[keys.indexed]
+agents = "ctrl+alt"
 
 # tmux: bind-key -r f display-popup -E "~/.local/bin/tmux-sessionizer"
 [[keys.command]]
@@ -113,6 +140,7 @@ pane_outer_borders = false
 copy_on_select = true
 confirm_close = true
 
+agent_panel_sort = "spaces"
 [session]
 # tmux: tmux-resurrect + tmux-continuum
 resume_agents_on_restore = true
