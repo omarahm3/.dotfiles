@@ -14,6 +14,8 @@ hl.unbind("SUPER + Tab")
 hl.unbind("SUPER + H")
 hl.unbind("SUPER + J")
 hl.unbind("SUPER + K")
+hl.unbind("SUPER + SUPER_L")
+hl.unbind("SUPER + SUPER_R")
 
 -- Launchers
 hl.bind("SUPER + SHIFT + Return", hl.dsp.exec_cmd("gtk-launch $(xdg-settings get default-web-browser)"),
@@ -24,13 +26,12 @@ hl.bind("SUPER + X", hl.dsp.exec_cmd("grim -g \"$(slurp)\" - | swappy -f -"),
     { description = "Screen snip >> edit" })
 
 -- Shell
-hl.bind("SUPER + Space", hl.dsp.global("quickshell:overviewToggleRelease"),
+hl.bind("SUPER + Space", hl.dsp.global("quickshell:searchToggle"),
+    { description = "Toggle app search" })
+hl.bind("SUPER + Tab", hl.dsp.global("quickshell:overviewWorkspacesToggle"),
     { description = "Toggle overview" })
-hl.bind("SUPER + Tab", hl.dsp.global("quickshell:overviewToggle"),
-    { description = "Toggle overview (alt)" })
 hl.bind("SUPER + SHIFT + B", hl.dsp.global("quickshell:sessionToggle"),
     { description = "Toggle session menu" })
-hl.bind("SUPER + SHIFT + B", hl.dsp.exec_cmd("qs -c $qsConfig ipc call TEST_ALIVE || pkill wlogout || wlogout -p layer-shell"))
 
 for i = 1, 8 do
     local button = { "mouse:272", "mouse:273", "mouse:274", "mouse:275", "mouse:276", "mouse:277", "mouse_up",
