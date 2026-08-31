@@ -5,7 +5,6 @@ set -euo pipefail
 
 HERDR_PROJECTS_FILE="${HERDR_PROJECTS_FILE:-$HOME/.config/herdr/projects}"
 HERDR_LISTS_DIR="${HERDR_LISTS_DIR:-$HOME/.config/herdr/lists}"
-HERDR_FOCUS_STATE="${HERDR_FOCUS_STATE:-${XDG_STATE_HOME:-$HOME/.local/state}/herdr/focus-history.json}"
 
 FZF_OPTS=(--cycle --reverse --color=hl:2)
 
@@ -50,21 +49,4 @@ herdr_open_workspace() {
 herdr_new_tab_pane() {
 	herdr tab create --label "$1" --focus |
 		jq -er '.result.root_pane.pane_id'
-}
-
-herdr_focused_workspace_id() {
-	herdr api snapshot |
-		jq -r '.result.snapshot.focused_workspace_id // empty'
-}
-
-# Focus history is maintained by herdr-focus-tracker. A missing file just means
-# the tracker has not seen a move yet, so the callers no-op.
-herdr_previous_workspace_id() {
-	[[ -r $HERDR_FOCUS_STATE ]] || return 0
-	jq -r '.workspace.previous // empty' "$HERDR_FOCUS_STATE"
-}
-
-herdr_previous_tab_id() {
-	[[ -r $HERDR_FOCUS_STATE ]] || return 0
-	jq -r --arg ws "$1" '.tabs[$ws].previous // empty' "$HERDR_FOCUS_STATE"
 }

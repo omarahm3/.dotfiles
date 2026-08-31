@@ -109,14 +109,14 @@ agents = "ctrl+alt"
 # Toggles the previous tab inside the active space.
 [[keys.command]]
 key = ["prefix+a", "prefix+^"]
-type = "shell"
-command = "/home/mrgeek/.local/bin/herdr-last-window"
+type = "plugin_action"
+command = "mrgeek.last-focus.last-window"
 
 # Toggles the previous space. tmux had no session-level equivalent bound.
 [[keys.command]]
 key = "prefix+shift+l"
-type = "shell"
-command = "/home/mrgeek/.local/bin/herdr-last-space"
+type = "plugin_action"
+command = "mrgeek.last-focus.last-space"
 
 # tmux: bind-key -r f display-popup -E "~/.local/bin/tmux-sessionizer"
 [[keys.command]]

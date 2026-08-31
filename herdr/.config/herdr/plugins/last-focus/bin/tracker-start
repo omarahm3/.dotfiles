@@ -1,0 +1,9 @@
+#!/usr/bin/env bash
+# Startup hook: herdr runs this once per server start and expects it to exit.
+# The tracker needs to be resident -- an event hook would fork per focus event --
+# so launch it detached. Its lock makes a repeat start a no-op.
+
+set -euo pipefail
+
+exec setsid --fork "$(dirname "$(readlink -f "$0")")/tracker" \
+	>>"${HERDR_PLUGIN_STATE_DIR:-${XDG_STATE_HOME:-$HOME/.local/state}/herdr/plugins/mrgeek.last-focus}/tracker.log" 2>&1
