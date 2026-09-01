@@ -221,9 +221,10 @@ if command -v "$HERDR" >/dev/null 2>&1 && "$HERDR" status >/dev/null 2>&1; then
 fi
 
 # -------------------------------------------------------------------- report --
-# Every finished run gets a short visual summary in English and Arabic, light
-# and dark. Shaped for an ADHD reader: the next action leads, the verdict is
-# visible without scrolling.
+# Every finished run gets ONE self-contained report carrying English + Arabic
+# and light + dark, switchable in the page. Shaped for an ADHD reader: the next
+# action leads, the verdict is visible without scrolling. This is not optional -
+# a run that does not explain itself leaves a transcript to read instead.
 report_urls=""
 if command -v herdr-report >/dev/null 2>&1; then
 	log "report"

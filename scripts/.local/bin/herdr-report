@@ -1,21 +1,28 @@
 #!/usr/bin/env python3
-"""herdr-report — turn a finished pipeline run into a short visual report.
+"""herdr-report — turn a finished pipeline run into ONE self-contained report.
 
-    herdr-report <run-dir> [--serve]
+    herdr-report <run-dir> [--task "..."] [--serve]
 
-Produces four self-contained HTML files in the run directory:
+Produces a single file:
 
-    report.en.light.html   report.en.dark.html
-    report.ar.light.html   report.ar.dark.html
+    report.html
 
-Shape of the writing follows the i-have-adhd skill: the next action leads,
-multi-step work is numbered, estimates are concrete, and the verdict is visible
-without scrolling. Styling follows diagram-design: editorial tokens, hairline
-borders, no shadows, coral used on exactly one thing.
+It carries English and Arabic, light and dark, in one document. Two toggles in
+the corner switch language and theme; the choice is remembered in localStorage.
+Both languages live in the DOM and are switched with CSS, so there is no second
+file to keep in sync and no chance of one drifting from the other.
 
-The Arabic build is a real RTL document (dir="rtl", mirrored layout), not a
-left-to-right page with Arabic glyphs poured into it. Code, paths, and commands
-stay LTR inside it because a reversed shell command is wrong, not localized.
+Without JavaScript the page still renders: English, light, fully readable.
+
+Writing shape follows the i-have-adhd skill - the next action leads, the verdict
+is visible without scrolling, multi-step work is numbered. Styling follows
+diagram-design - editorial tokens, hairline borders, no shadows, coral on
+exactly one element.
+
+The Arabic side is a real RTL document (dir flips to rtl, layout mirrors), not
+English glyphs poured into a left-to-right page. Code, paths and commands stay
+LTR inside Arabic sentences because a reversed shell command is wrong, not
+localized.
 """
 
 from __future__ import annotations
@@ -28,48 +35,152 @@ import subprocess
 import sys
 from pathlib import Path
 
-TOKENS = {
-    "light": dict(paper="#f5f5f5", paper2="#ffffff", ink="#2d3142", muted="#4f5d75",
-                  soft="#7a8399", rule="rgba(45,49,66,0.12)", accent="#eb6c36",
-                  accent_tint="rgba(235,108,54,0.08)", link="#2e5aa8",
-                  ok="#7c8f6f", warn="#b8915a", bad="#b85450"),
-    "dark": dict(paper="#2d3142", paper2="#393e53", ink="#f5f5f5", muted="#bfc0c0",
-                 soft="#8e98ac", rule="rgba(245,245,245,0.12)", accent="#f08a59",
-                 accent_tint="rgba(240,138,89,0.12)", link="#6a95d8",
-                 ok="#9caf8f", warn="#d3ad7a", bad="#d97a78"),
+VERDICTS = {
+    "SHIP": ("SHIP", "جاهز للدمج", "ok"),
+    "SHIP WITH FIXES": ("SHIP WITH FIXES", "جاهز بعد إصلاحات", "warn"),
+    "DO NOT SHIP": ("DO NOT SHIP", "لا تدمجه", "bad"),
+    "NO REVIEW": ("NO REVIEW", "بدون مراجعة", "soft"),
 }
 
-STR = {
-    "en": dict(
-        dir="ltr", lang="en",
-        eyebrow="Pipeline run", next_action="Do this next",
-        what="What was asked", changed="What changed", reviews="What the reviewers said",
-        verdict="Verdict", files="Files", steps="Your next steps",
-        author="Author", reviewer="Reviewer", diff_lines="lines changed",
-        no_review="produced no usable review",
-        merge="Merge it", inspect="Read the diff first",
-        font="'Geist', system-ui, sans-serif",
-        serif="'Instrument Serif', Georgia, serif",
-    ),
-    "ar": dict(
-        dir="rtl", lang="ar",
-        eyebrow="تشغيل خط المعالجة", next_action="الخطوة التالية",
-        what="ما هو المطلوب", changed="ما الذي تغيّر", reviews="ماذا قال المراجعون",
-        verdict="الحكم", files="الملفات", steps="خطواتك التالية",
-        author="المنفّذ", reviewer="المراجع", diff_lines="سطر معدّل",
-        no_review="لم ينتج مراجعة صالحة",
-        merge="ادمج التغيير", inspect="اقرأ الفرق أولاً",
-        font="'Noto Sans Arabic', 'Geist', system-ui, sans-serif",
-        serif="'Noto Kufi Arabic', 'Instrument Serif', Georgia, serif",
-    ),
+T = {
+    "eyebrow": ("Pipeline run", "تشغيل خط المعالجة"),
+    "next": ("Do this next", "الخطوة التالية"),
+    "what": ("What the author did", "ما الذي نفّذه المنفّذ"),
+    "reviews": ("What the reviewers said", "ماذا قال المراجعون"),
+    "files": ("Files touched", "الملفات المعدّلة"),
+    "verdict": ("Verdict", "الحكم"),
+    "author": ("Author", "المنفّذ"),
+    "changed": ("Changed", "التغييرات"),
+    "lines": ("lines", "سطر"),
+    "merge": ("Both reviewers are happy. Merge it.",
+              "المراجعان راضيان. يمكنك الدمج."),
+    "inspect": ("At least one reviewer flagged something. Read the diff first.",
+                "أبدى أحد المراجعين ملاحظات. اقرأ الفرق أولاً."),
+    "noreview": ("This reviewer produced no usable review — treat that as unknown, not as approval.",
+                 "لم ينتج هذا المراجع مراجعة صالحة — اعتبر ذلك مجهولاً وليس موافقة."),
+    "nofiles": ("No files recorded", "لا توجد ملفات مسجلة"),
 }
 
-VERDICT_AR = {
-    "SHIP": "جاهز للدمج",
-    "SHIP WITH FIXES": "جاهز بعد إصلاحات",
-    "DO NOT SHIP": "لا تدمجه",
-    "NO REVIEW": "بدون مراجعة",
+CSS = r"""
+*,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
+:root{
+  --paper:#f5f5f5; --paper2:#ffffff; --ink:#2d3142; --muted:#4f5d75;
+  --soft:#7a8399; --rule:rgba(45,49,66,0.12); --accent:#eb6c36;
+  --tint:rgba(235,108,54,0.08); --ok:#7c8f6f; --warn:#b8915a; --bad:#b85450;
+  --sans:'Geist',system-ui,sans-serif;
+  --serif:'Instrument Serif',Georgia,serif;
+  --mono:'Geist Mono',ui-monospace,Menlo,monospace;
 }
+[data-theme="dark"]{
+  --paper:#2d3142; --paper2:#393e53; --ink:#f5f5f5; --muted:#bfc0c0;
+  --soft:#8e98ac; --rule:rgba(245,245,245,0.14); --accent:#f08a59;
+  --tint:rgba(240,138,89,0.12); --ok:#9caf8f; --warn:#d3ad7a; --bad:#d97a78;
+}
+[data-lang="ar"]{
+  --sans:'Noto Sans Arabic','Geist',system-ui,sans-serif;
+  --serif:'Noto Kufi Arabic','Instrument Serif',Georgia,serif;
+}
+body{font-family:var(--sans);background:var(--paper);color:var(--ink);
+  padding:2.5rem 1.5rem 3rem;line-height:1.6;
+  transition:background .15s ease,color .15s ease}
+.wrap{max-width:820px;margin:0 auto}
+
+/* language switching: both live in the DOM, CSS picks one */
+[data-lang="en"] .ar{display:none}
+[data-lang="ar"] .en{display:none}
+[data-lang="ar"] li{padding-left:0;padding-right:1rem}
+[data-lang="ar"] li::before{left:auto;right:0}
+[data-lang="ar"] ol{padding-left:0;padding-right:1.2rem}
+
+/* toolbar */
+.bar{max-width:820px;margin:0 auto 1.5rem;display:flex;gap:.4rem;
+  justify-content:flex-end;flex-wrap:wrap}
+.bar button{font-family:var(--mono);font-size:.66rem;letter-spacing:.08em;
+  background:var(--paper2);color:var(--muted);border:1px solid var(--rule);
+  border-radius:5px;padding:.35rem .6rem;cursor:pointer;line-height:1}
+.bar button[aria-pressed="true"]{color:var(--accent);border-color:var(--accent);
+  background:var(--tint)}
+.bar .sep{width:.5rem}
+
+.eyebrow{font-family:var(--mono);font-size:.64rem;letter-spacing:.16em;
+  text-transform:uppercase;color:var(--muted);margin-bottom:.55rem}
+h1{font-family:var(--serif);font-size:clamp(1.6rem,3vw + 1rem,2.2rem);
+  font-weight:400;line-height:1.15;margin-bottom:.35rem;word-break:break-word}
+.sub{color:var(--muted);font-size:.9rem;margin-bottom:1.75rem}
+
+.action{background:var(--tint);border:1px solid var(--accent);border-radius:8px;
+  padding:1.05rem 1.2rem;margin-bottom:1.6rem}
+.action .k{font-family:var(--mono);font-size:.62rem;letter-spacing:.16em;
+  text-transform:uppercase;color:var(--accent);font-weight:600;margin-bottom:.5rem}
+.action code{display:block;direction:ltr;text-align:left;font-family:var(--mono);
+  font-size:.8rem;background:var(--paper2);border:1px solid var(--rule);
+  border-radius:5px;padding:.6rem .7rem;margin-bottom:.5rem;overflow-x:auto;
+  white-space:pre}
+.action .why{font-size:.8rem;color:var(--muted)}
+
+.stats{display:grid;grid-template-columns:repeat(auto-fit,minmax(150px,1fr));
+  gap:.65rem;margin-bottom:1.6rem}
+.stat{background:var(--paper2);border:1px solid var(--rule);border-radius:6px;
+  padding:.7rem .85rem}
+.stat .k{font-family:var(--mono);font-size:.56rem;letter-spacing:.14em;
+  text-transform:uppercase;color:var(--soft)}
+.stat .v{font-size:.95rem;font-weight:600;margin-top:.15rem}
+.ok{color:var(--ok)} .warn{color:var(--warn)} .bad{color:var(--bad)}
+.soft{color:var(--soft)}
+
+h2{font-family:var(--mono);font-size:.66rem;letter-spacing:.15em;
+  text-transform:uppercase;color:var(--muted);margin:1.75rem 0 .7rem;
+  padding-bottom:.4rem;border-bottom:1px solid var(--rule)}
+.card{background:var(--paper2);border:1px solid var(--rule);border-radius:6px;
+  padding:.95rem 1.1rem;margin-bottom:.65rem}
+.chead{display:flex;align-items:center;gap:.55rem;margin-bottom:.6rem;
+  padding-bottom:.55rem;border-bottom:1px solid var(--rule)}
+.dot{width:7px;height:7px;border-radius:50%;flex-shrink:0;background:var(--soft)}
+.dot.ok{background:var(--ok)} .dot.warn{background:var(--warn)}
+.dot.bad{background:var(--bad)}
+.chead h3{font-size:.85rem;font-weight:600;flex:1;font-family:var(--mono)}
+.badge{font-family:var(--mono);font-size:.58rem;letter-spacing:.1em;
+  text-transform:uppercase;border:1px solid currentColor;border-radius:3px;
+  padding:.15rem .45rem;font-weight:600;white-space:nowrap}
+ul{list-style:none}
+li{position:relative;padding-left:1rem;margin-bottom:.35rem;color:var(--muted);
+  font-size:.85rem}
+li::before{content:'—';position:absolute;left:0;color:var(--soft);font-size:.7rem}
+code{font-family:var(--mono);font-size:.78em;color:var(--ink);
+  direction:ltr;unicode-bidi:isolate}
+.foot{margin-top:2rem;padding-top:1rem;border-top:1px solid var(--rule);
+  font-family:var(--mono);font-size:.68rem;color:var(--soft);
+  display:flex;justify-content:space-between;flex-wrap:wrap;gap:.5rem}
+@media print{.bar{display:none}}
+"""
+
+JS = r"""
+(function(){
+  var r=document.documentElement;
+  function apply(lang,theme){
+    r.setAttribute('data-lang',lang);
+    r.setAttribute('data-theme',theme);
+    r.setAttribute('lang',lang);
+    r.setAttribute('dir',lang==='ar'?'rtl':'ltr');
+    document.querySelectorAll('[data-set-lang]').forEach(function(b){
+      b.setAttribute('aria-pressed',String(b.dataset.setLang===lang));});
+    document.querySelectorAll('[data-set-theme]').forEach(function(b){
+      b.setAttribute('aria-pressed',String(b.dataset.setTheme===theme));});
+    try{localStorage.setItem('hr.lang',lang);localStorage.setItem('hr.theme',theme);}catch(e){}
+  }
+  var lang,theme;
+  try{lang=localStorage.getItem('hr.lang');theme=localStorage.getItem('hr.theme');}catch(e){}
+  if(!lang)lang='en';
+  if(!theme)theme=(window.matchMedia&&window.matchMedia('(prefers-color-scheme: dark)').matches)?'dark':'light';
+  apply(lang,theme);
+  document.addEventListener('click',function(e){
+    var b=e.target.closest('[data-set-lang],[data-set-theme]');
+    if(!b)return;
+    apply(b.dataset.setLang||r.getAttribute('data-lang'),
+          b.dataset.setTheme||r.getAttribute('data-theme'));
+  });
+})();
+"""
 
 
 def read(p: Path) -> str:
@@ -80,7 +191,7 @@ def read(p: Path) -> str:
 
 
 def verdict_of(text: str) -> str:
-    """Last verdict wins: agents often restate the summary at the end."""
+    """Last verdict wins — agents restate their summary at the end."""
     hits = re.findall(r"DO NOT SHIP|SHIP WITH FIXES|SHIP", text)
     return hits[-1] if hits else "NO REVIEW"
 
@@ -94,7 +205,6 @@ def diff_stats(diff: str) -> tuple[int, list[str]]:
 
 
 def tail_summary(text: str, n: int = 6) -> list[str]:
-    """The agent's own closing summary is the most quotable part."""
     lines = [l.rstrip() for l in text.splitlines() if l.strip()]
     drop = re.compile(r"^(hook:|tokens used|\d+$|[-=─━]{3,})")
     lines = [l for l in lines if not drop.match(l.strip())]
@@ -102,197 +212,167 @@ def tail_summary(text: str, n: int = 6) -> list[str]:
 
 
 def esc(s: str) -> str:
-    return html.escape(s, quote=False)
+    return html.escape(str(s), quote=False)
 
 
-def translate_ar(points: dict[str, list[str]]) -> dict[str, list[str]]:
-    """Translate the extracted English bullets into Arabic.
+def md_code(s: str) -> str:
+    """`x` and **x** from agent prose -> real markup, everything else escaped."""
+    s = esc(s)
+    s = re.sub(r"`([^`]+)`", r"<code>\1</code>", s)
+    s = re.sub(r"\*\*([^*]+)\*\*", r"<strong>\1</strong>", s)
+    return s
 
-    The chrome (headings, verdicts) is translated by lookup table above, but the
-    substance comes from agent transcripts and is always English. An Arabic page
-    whose body is English is not an Arabic page, so run one cheap agent pass to
-    translate. Code, paths, commands and identifiers are kept verbatim.
 
-    Falls back to the English text if the agent is unavailable or returns
-    unusable JSON - a report with English bullets is worse than a bilingual one,
-    but far better than no report.
+def translate_ar(bundle: dict[str, list[str]]) -> dict[str, list[str]]:
+    """Translate extracted English bullets to Arabic via one cheap agent pass.
+
+    Chrome is translated by the table above, but the substance comes from agent
+    transcripts and is always English. A page whose body is English is not an
+    Arabic page. Falls back to the English text on any failure — English bullets
+    beat no report.
     """
-    payload = json.dumps(points, ensure_ascii=False)
+    payload = json.dumps(bundle, ensure_ascii=False)
     prompt = (
         "Translate the string values in this JSON from English to Modern Standard "
         "Arabic. Keep every key and the array structure identical. Do NOT translate "
-        "code, file paths, commands, flags, package names, or identifiers in "
-        "backticks - keep those exactly as they are. Reply with ONLY the JSON, no "
+        "code, file paths, commands, flags, package names, or anything inside "
+        "backticks — keep those byte-for-byte. Reply with ONLY the JSON, no "
         "markdown fence, no commentary.\n\n" + payload
     )
     lib = Path.home() / ".local/bin/herdr-agents-lib.sh"
     if not lib.exists():
-        return points
+        return bundle
     try:
         r = subprocess.run(
             ["bash", "-c", f'source {lib!s} && agent_run opencode "$1"', "_", prompt],
             capture_output=True, text=True, timeout=300,
         )
-        out = r.stdout.strip()
-        m = re.search(r"\{.*\}", out, re.S)
+        m = re.search(r"\{.*\}", r.stdout, re.S)
         if not m:
-            return points
+            return bundle
         got = json.loads(m.group())
-        # only accept a same-shaped result
-        if set(got) != set(points):
-            return points
+        if set(got) != set(bundle):
+            return bundle
         return {k: [str(x) for x in v] for k, v in got.items()}
     except Exception:
-        return points
+        return bundle
 
 
-def build(run: Path, lang: str, theme: str, data: dict) -> str:
-    t = TOKENS[theme]
-    s = STR[lang]
-    rtl = lang == "ar"
-    align = "right" if rtl else "left"
+def bi(en: str, ar: str, tag: str = "span") -> str:
+    """One bilingual element — both present, CSS shows one."""
+    return f'<{tag} class="en">{en}</{tag}><{tag} class="ar">{ar}</{tag}>'
 
-    vcolor = {"SHIP": t["ok"], "SHIP WITH FIXES": t["warn"],
-              "DO NOT SHIP": t["bad"], "NO REVIEW": t["soft"]}
 
-    def vlabel(v: str) -> str:
-        return VERDICT_AR.get(v, v) if rtl else v
-
-    # overall verdict = worst of the reviewer verdicts
+def build(run: Path, d: dict) -> str:
     order = ["DO NOT SHIP", "SHIP WITH FIXES", "SHIP", "NO REVIEW"]
-    vs = [r["verdict"] for r in data["reviews"]] or ["NO REVIEW"]
+    vs = [r["verdict"] for r in d["reviews"]] or ["NO REVIEW"]
     overall = sorted(vs, key=lambda v: order.index(v) if v in order else 9)[0]
+    v_en, v_ar, v_cls = VERDICTS[overall]
 
     if overall == "SHIP":
-        action = (f'git -C {data["repo"]} merge {data["branch"]}'
-                  if not rtl else f'git -C {data["repo"]} merge {data["branch"]}')
-        action_note = s["merge"]
+        cmd = f'git -C {d["repo"]} merge {d["branch"]}'
+        why_en, why_ar = T["merge"]
     else:
-        action = f'less {run}/change.diff'
-        action_note = s["inspect"]
+        cmd = f'less {run}/change.diff'
+        why_en, why_ar = T["inspect"]
 
-    review_cards = ""
-    for r in data["reviews"]:
-        c = vcolor.get(r["verdict"], t["soft"])
-        pts = "".join(f"<li>{esc(x)}</li>" for x in r["points"]) or f"<li>{esc(s['no_review'])}</li>"
-        review_cards += f"""
-      <div class="card">
-        <div class="chead">
-          <span class="dot" style="background:{c}"></span>
-          <h3>{esc(r['name'])}</h3>
-          <span class="verdict" style="color:{c};border-color:{c}">{esc(vlabel(r['verdict']))}</span>
-        </div>
-        <ul>{pts}</ul>
-      </div>"""
+    cards = []
+    for r in d["reviews"]:
+        e, a, cls = VERDICTS[r["verdict"]]
+        if r["points"]:
+            pts = "".join(
+                f'<li>{bi(md_code(en), md_code(ar))}</li>'
+                for en, ar in zip(r["points"], r["points_ar"])
+            )
+        else:
+            pts = f'<li>{bi(esc(T["noreview"][0]), esc(T["noreview"][1]))}</li>'
+        cards.append(
+            f'<div class="card"><div class="chead">'
+            f'<span class="dot {cls}"></span><h3>{esc(r["name"])}</h3>'
+            f'<span class="badge {cls}">{bi(esc(e), esc(a))}</span></div>'
+            f'<ul>{pts}</ul></div>'
+        )
 
-    files_list = "".join(f"<li><code>{esc(f)}</code></li>" for f in data["files"][:12]) or "<li>—</li>"
-    author_pts = "".join(f"<li>{esc(x)}</li>" for x in data["author_points"]) or "<li>—</li>"
+    author_pts = "".join(
+        f'<li>{bi(md_code(en), md_code(ar))}</li>'
+        for en, ar in zip(d["author_points"], d["author_points_ar"])
+    ) or f'<li>—</li>'
 
-    fonts = ("https://fonts.googleapis.com/css2?family=Noto+Sans+Arabic:wght@400;500;600&"
-             "family=Noto+Kufi+Arabic:wght@400;700&display=swap" if rtl else
-             "https://fonts.googleapis.com/css2?family=Instrument+Serif&"
-             "family=Geist:wght@400;500;600&family=Geist+Mono:wght@400;500&display=swap")
+    files = "".join(f"<li><code>{esc(f)}</code></li>" for f in d["files"][:14]) \
+        or f'<li>{bi(esc(T["nofiles"][0]), esc(T["nofiles"][1]))}</li>'
 
     return f"""<!DOCTYPE html>
-<html lang="{s['lang']}" dir="{s['dir']}">
+<html lang="en" dir="ltr" data-theme="light" data-lang="en">
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>{esc(data['branch'])} — {esc(vlabel(overall))}</title>
-<link href="{fonts}" rel="stylesheet">
-<style>
-  *,*::before,*::after{{box-sizing:border-box;margin:0;padding:0}}
-  :root{{--paper:{t['paper']};--paper2:{t['paper2']};--ink:{t['ink']};--muted:{t['muted']};
-    --soft:{t['soft']};--rule:{t['rule']};--accent:{t['accent']};--tint:{t['accent_tint']}}}
-  body{{font-family:{s['font']};background:var(--paper);color:var(--ink);
-    padding:2.5rem 1.5rem;line-height:1.55;text-align:{align}}}
-  .wrap{{max-width:820px;margin:0 auto}}
-  .eyebrow{{font-size:.66rem;letter-spacing:.16em;text-transform:uppercase;
-    color:var(--muted);margin-bottom:.6rem}}
-  h1{{font-family:{s['serif']};font-size:clamp(1.6rem,3vw + 1rem,2.2rem);font-weight:400;
-    line-height:1.15;margin-bottom:.4rem}}
-  .sub{{color:var(--muted);font-size:.9rem;margin-bottom:1.75rem}}
-  .action{{background:var(--tint);border:1px solid var(--accent);border-radius:8px;
-    padding:1.1rem 1.25rem;margin-bottom:1.75rem}}
-  .action .k{{font-size:.62rem;letter-spacing:.16em;text-transform:uppercase;
-    color:var(--accent);margin-bottom:.5rem;font-weight:600}}
-  .action code{{display:block;direction:ltr;text-align:left;font-family:ui-monospace,Menlo,monospace;
-    font-size:.82rem;background:var(--paper2);border:1px solid var(--rule);border-radius:5px;
-    padding:.6rem .75rem;margin-top:.5rem;overflow-x:auto;white-space:pre}}
-  .action .why{{font-size:.8rem;color:var(--muted);margin-top:.5rem}}
-  .stats{{display:grid;grid-template-columns:repeat(auto-fit,minmax(150px,1fr));
-    gap:.7rem;margin-bottom:1.75rem}}
-  .stat{{background:var(--paper2);border:1px solid var(--rule);border-radius:6px;padding:.75rem .9rem}}
-  .stat .k{{font-size:.58rem;letter-spacing:.14em;text-transform:uppercase;color:var(--soft)}}
-  .stat .v{{font-size:.95rem;font-weight:600;margin-top:.15rem}}
-  h2{{font-size:.72rem;letter-spacing:.15em;text-transform:uppercase;color:var(--muted);
-    margin:1.75rem 0 .7rem;padding-bottom:.4rem;border-bottom:1px solid var(--rule)}}
-  .card{{background:var(--paper2);border:1px solid var(--rule);border-radius:6px;
-    padding:1rem 1.15rem;margin-bottom:.7rem}}
-  .chead{{display:flex;align-items:center;gap:.55rem;margin-bottom:.6rem;
-    padding-bottom:.55rem;border-bottom:1px solid var(--rule)}}
-  .dot{{width:7px;height:7px;border-radius:50%;flex-shrink:0}}
-  .chead h3{{font-size:.85rem;font-weight:600;flex:1}}
-  .verdict{{font-size:.6rem;letter-spacing:.1em;text-transform:uppercase;
-    border:1px solid;border-radius:3px;padding:.15rem .45rem;font-weight:600}}
-  ul{{list-style:none}}
-  li{{position:relative;padding-{'right' if rtl else 'left'}:1rem;margin-bottom:.35rem;
-    color:var(--muted);font-size:.85rem}}
-  li::before{{content:'—';position:absolute;{'right' if rtl else 'left'}:0;color:var(--soft);font-size:.7rem}}
-  ol{{padding-{'right' if rtl else 'left'}:1.2rem;color:var(--muted);font-size:.85rem}}
-  ol li{{padding:0;margin-bottom:.4rem}}
-  ol li::before{{content:none}}
-  code{{font-family:ui-monospace,Menlo,monospace;font-size:.78em;color:var(--ink);
-    direction:ltr;unicode-bidi:embed;display:inline-block}}
-  .foot{{margin-top:2rem;padding-top:1rem;border-top:1px solid var(--rule);
-    font-size:.7rem;color:var(--soft);display:flex;justify-content:space-between;
-    flex-wrap:wrap;gap:.5rem}}
-  .foot a{{color:var(--soft)}}
-</style>
+<title>{esc(d['branch'])} — {esc(v_en)}</title>
+<link href="https://fonts.googleapis.com/css2?family=Instrument+Serif&family=Geist:wght@400;500;600&family=Geist+Mono:wght@400;500;600&family=Noto+Sans+Arabic:wght@400;500;600&family=Noto+Kufi+Arabic:wght@400;700&display=swap" rel="stylesheet">
+<style>{CSS}</style>
 </head>
 <body>
+
+<div class="bar">
+  <button type="button" data-set-lang="en" aria-pressed="true">EN</button>
+  <button type="button" data-set-lang="ar" aria-pressed="false" lang="ar">ع</button>
+  <span class="sep"></span>
+  <button type="button" data-set-theme="light" aria-pressed="true">LIGHT</button>
+  <button type="button" data-set-theme="dark" aria-pressed="false">DARK</button>
+</div>
+
 <div class="wrap">
-  <p class="eyebrow">{esc(s['eyebrow'])} · {esc(data['repo_name'])}</p>
-  <h1>{esc(data['branch'])}</h1>
-  <p class="sub">{esc(data['task'])}</p>
+  <p class="eyebrow">{bi(esc(T['eyebrow'][0]), esc(T['eyebrow'][1]))} · {esc(d['repo_name'])}</p>
+  <h1>{esc(d['branch'])}</h1>
+  <p class="sub">{bi(esc(d['task']), esc(d['task_ar']))}</p>
 
   <div class="action">
-    <p class="k">{esc(s['next_action'])}</p>
-    <code>{esc(action)}</code>
-    <p class="why">{esc(action_note)}</p>
+    <p class="k">{bi(esc(T['next'][0]), esc(T['next'][1]))}</p>
+    <code>{esc(cmd)}</code>
+    <p class="why">{bi(esc(why_en), esc(why_ar))}</p>
   </div>
 
   <div class="stats">
-    <div class="stat"><p class="k">{esc(s['verdict'])}</p>
-      <p class="v" style="color:{vcolor.get(overall, t['soft'])}">{esc(vlabel(overall))}</p></div>
-    <div class="stat"><p class="k">{esc(s['author'])}</p><p class="v">{esc(data['author'])}</p></div>
-    <div class="stat"><p class="k">{esc(s['changed'])}</p>
-      <p class="v">{data['changed']} {esc(s['diff_lines'])}</p></div>
+    <div class="stat">
+      <p class="k">{bi(esc(T['verdict'][0]), esc(T['verdict'][1]))}</p>
+      <p class="v {v_cls}">{bi(esc(v_en), esc(v_ar))}</p>
+    </div>
+    <div class="stat">
+      <p class="k">{bi(esc(T['author'][0]), esc(T['author'][1]))}</p>
+      <p class="v">{esc(d['author'])}</p>
+    </div>
+    <div class="stat">
+      <p class="k">{bi(esc(T['changed'][0]), esc(T['changed'][1]))}</p>
+      <p class="v">{d['changed']} {bi(esc(T['lines'][0]), esc(T['lines'][1]))}</p>
+    </div>
   </div>
 
-  <h2>{esc(s['what'])}</h2>
+  <h2>{bi(esc(T['what'][0]), esc(T['what'][1]))}</h2>
   <div class="card"><ul>{author_pts}</ul></div>
 
-  <h2>{esc(s['reviews'])}</h2>
-  {review_cards}
+  <h2>{bi(esc(T['reviews'][0]), esc(T['reviews'][1]))}</h2>
+  {''.join(cards)}
 
-  <h2>{esc(s['files'])}</h2>
-  <div class="card"><ul>{files_list}</ul></div>
+  <h2>{bi(esc(T['files'][0]), esc(T['files'][1]))}</h2>
+  <div class="card"><ul>{files}</ul></div>
 
   <div class="foot">
-    <span>{esc(str(run))}</span>
+    <span><code>{esc(str(run))}</code></span>
     <span>herdr-pipeline</span>
   </div>
 </div>
+
+<script>{JS}</script>
 </body>
 </html>"""
 
 
 def main() -> int:
     ap = argparse.ArgumentParser()
-    ap.add_argument("run", help="pipeline run directory under ~/.herdr/runs/")
-    ap.add_argument("--task", default="", help="task text (defaults to run.json if present)")
-    ap.add_argument("--serve", action="store_true", help="publish through visual-explainer")
+    ap.add_argument("run")
+    ap.add_argument("--task", default="")
+    ap.add_argument("--serve", action="store_true")
+    ap.add_argument("--no-translate", action="store_true",
+                    help="skip the Arabic translation pass (faster, EN body in both)")
     a = ap.parse_args()
 
     run = Path(a.run).expanduser().resolve()
@@ -300,66 +380,57 @@ def main() -> int:
         print(f"not a directory: {run}", file=sys.stderr)
         return 1
 
-    diff = read(run / "change.diff")
-    changed, files = diff_stats(diff)
+    changed, files = diff_stats(read(run / "change.diff"))
 
-    author_file = next(iter(sorted(run.glob("author-*.md"))), None)
-    author = author_file.stem.replace("author-", "") if author_file else "?"
-    author_points = tail_summary(read(author_file)) if author_file else []
+    af = next(iter(sorted(run.glob("author-*.md"))), None)
+    author = af.stem.replace("author-", "") if af else "?"
+    author_points = tail_summary(read(af)) if af else []
 
     reviews = []
     for rf in sorted(run.glob("review-*.md")) + sorted(run.glob("review-*.FAILED.md")):
         name = rf.stem.replace("review-", "").replace(".FAILED", "")
         txt = read(rf)
         failed = rf.name.endswith(".FAILED.md") or not txt.strip()
-        reviews.append(dict(
-            name=name,
-            verdict="NO REVIEW" if failed else verdict_of(txt),
-            points=[] if failed else tail_summary(txt, 5),
-        ))
+        reviews.append(dict(name=name,
+                            verdict="NO REVIEW" if failed else verdict_of(txt),
+                            points=[] if failed else tail_summary(txt, 5)))
 
-    branch = run.name.replace("-", "/", 1)
-    data = dict(
+    task = a.task or f"see {run}/"
+    bundle = {"task": [task], "author": author_points}
+    for i, r in enumerate(reviews):
+        bundle[f"r{i}"] = r["points"]
+
+    tr = bundle if a.no_translate else translate_ar(bundle)
+
+    d = dict(
         repo=str(Path.home() / "projects" / run.parent.name),
-        repo_name=run.parent.name, branch=branch,
-        task=a.task or f"see {run}/", author=author, author_points=author_points,
-        changed=changed, files=files, reviews=reviews,
+        repo_name=run.parent.name,
+        branch=run.name.replace("-", "/", 1),
+        task=task,
+        task_ar=(tr.get("task") or [task])[0],
+        author=author,
+        author_points=author_points,
+        author_points_ar=tr.get("author", author_points),
+        changed=changed, files=files,
+        reviews=[dict(r, points_ar=tr.get(f"r{i}", r["points"]))
+                 for i, r in enumerate(reviews)],
     )
 
-    written = []
-    for lang in ("en", "ar"):
-        d = data
-        if lang == "ar":
-            # translate the substance once, reuse for both themes
-            bundle = {"author": data["author_points"]}
-            for i, r in enumerate(data["reviews"]):
-                bundle[f"r{i}"] = r["points"]
-            tr = translate_ar(bundle)
-            d = dict(data)
-            d["author_points"] = tr.get("author", data["author_points"])
-            d["reviews"] = [dict(r, points=tr.get(f"r{i}", r["points"]))
-                            for i, r in enumerate(data["reviews"])]
-        for theme in ("light", "dark"):
-            out = run / f"report.{lang}.{theme}.html"
-            out.write_text(build(run, lang, theme, d), encoding="utf-8")
-            written.append(out)
-
-    print("wrote:")
-    for w in written:
-        print(f"  {w}")
+    out = run / "report.html"
+    out.write_text(build(run, d), encoding="utf-8")
+    print(f"wrote: {out}")
 
     if a.serve:
         ve = Path.home() / ".hermes/skills/openclaw-imports/visual-explainer/scripts/serve.py"
         if ve.exists():
-            print("\nserved:")
-            for w in written:
-                try:
-                    u = subprocess.run([sys.executable, str(ve), "serve", str(w)],
-                                       capture_output=True, text=True, timeout=60)
-                    line = (u.stdout or u.stderr).strip().splitlines()[-1:]
-                    print(f"  {w.name}: {line[0] if line else '?'}")
-                except Exception as e:
-                    print(f"  {w.name}: {e}", file=sys.stderr)
+            try:
+                r = subprocess.run([sys.executable, str(ve), "serve", str(out)],
+                                   capture_output=True, text=True, timeout=60)
+                line = (r.stdout or r.stderr).strip().splitlines()
+                if line:
+                    print(line[-1])
+            except Exception as e:
+                print(f"serve failed: {e}", file=sys.stderr)
     return 0
 
 
