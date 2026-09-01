@@ -1,0 +1,199 @@
+#!/usr/bin/env bash
+# herdr-agent-worktree — provision an isolated tanda-style worktree and open it
+# as a grouped Herdr workspace, optionally with a coding agent already running.
+#
+#   herdr-agent-worktree <branch> [--repo DIR] [--agent KIND] [--name NAME]
+#
+# Why this exists: `git worktree add` alone is NOT enough for tanda. A fresh
+# worktree has no node_modules and no .env files (both gitignored), so any agent
+# dropped into one fails on the first `bun run typecheck`. This script carries
+# the untracked-but-required files over and installs deps before handing the
+# checkout to an agent.
+#
+# Measured on this box: worktree add ~0.8s, `bun install` ~34s with a warm bun
+# cache, ~3.4G of node_modules per worktree. Budget disk accordingly.
+
+set -euo pipefail
+
+REPO="$HOME/projects/tanda"
+BRANCH=""
+AGENT=""
+AGENT_NAME=""
+
+usage() {
+	cat <<'EOF'
+Usage: herdr-agent-worktree <branch> [options]
+
+  <branch>          branch to check out; created from HEAD if it does not exist
+
+  --repo DIR        source repository (default: ~/projects/tanda)
+  --agent KIND      start a coding agent in the workspace (claude|codex|cursor|gemini|...)
+  --name NAME       herdr agent name (default: derived from branch)
+  -h, --help        show this help
+
+Examples:
+  herdr-agent-worktree fix/settings-tests
+  herdr-agent-worktree feat/voice-lang --agent codex --name voice
+EOF
+}
+
+while [[ $# -gt 0 ]]; do
+	case "$1" in
+	--repo)
+		REPO="${2:?--repo needs a directory}"
+		shift 2
+		;;
+	--agent)
+		AGENT="${2:?--agent needs a kind}"
+		shift 2
+		;;
+	--name)
+		AGENT_NAME="${2:?--name needs a value}"
+		shift 2
+		;;
+	-h | --help)
+		usage
+		exit 0
+		;;
+	-*)
+		printf 'unknown option: %s\n' "$1" >&2
+		usage >&2
+		exit 1
+		;;
+	*)
+		[[ -z $BRANCH ]] || {
+			printf 'unexpected argument: %s\n' "$1" >&2
+			exit 1
+		}
+		BRANCH="$1"
+		shift
+		;;
+	esac
+done
+
+[[ -n $BRANCH ]] || {
+	usage >&2
+	exit 1
+}
+[[ -d $REPO/.git ]] || {
+	printf 'not a git repo: %s\n' "$REPO" >&2
+	exit 1
+}
+
+HERDR="${HERDR_BIN_PATH:-herdr}"
+command -v "$HERDR" >/dev/null || {
+	printf 'herdr not on PATH\n' >&2
+	exit 1
+}
+
+# Codex gates an interactive TUI session behind a per-directory trust prompt
+# ("Do you trust the contents of this directory?"), and that trust does NOT
+# inherit from $HOME or from the source repo. A brand new worktree therefore
+# always blocks a fresh `codex` TUI until someone answers it by hand.
+#
+# `codex exec` has no such gate inside a git repo, so unattended work should use
+# it. When --agent codex is requested we pre-trust the checkout so the
+# interactive pane is usable too, using codex's own config rather than a forged
+# hash.
+codex_trust_dir() {
+	local dir="$1" cfg="$HOME/.codex/config.toml"
+	grep -qF "[projects.\"$dir\"]" "$cfg" 2>/dev/null && return 0
+	printf '\n[projects."%s"]\ntrust_level = "trusted"\n' "$dir" >>"$cfg"
+	printf 'trusted %s for codex\n' "$dir"
+}
+
+repo_name=$(basename "$REPO")
+slug=$(printf '%s' "$BRANCH" | tr '/' '-' | tr -cd '[:alnum:]._-')
+root="${HERDR_WORKTREE_ROOT:-$HOME/.herdr/worktrees}"
+dest="$root/$repo_name/$slug"
+
+# --- create or reuse the checkout -------------------------------------------
+if [[ -d $dest ]]; then
+	printf 'reusing existing worktree: %s\n' "$dest"
+else
+	mkdir -p "$(dirname "$dest")"
+	if git -C "$REPO" show-ref --verify --quiet "refs/heads/$BRANCH"; then
+		git -C "$REPO" worktree add "$dest" "$BRANCH"
+	else
+		git -C "$REPO" worktree add "$dest" -b "$BRANCH"
+	fi
+fi
+
+# --- carry over gitignored-but-required files -------------------------------
+# .env files are gitignored, so a fresh worktree has none. Without them the
+# server package fails immediately. Copy every real .env (skipping examples and
+# timestamped .bak files) preserving its relative path.
+printf 'carrying .env files...\n'
+while IFS= read -r rel; do
+	mkdir -p "$dest/$(dirname "$rel")"
+	cp "$REPO/$rel" "$dest/$rel"
+	printf '  %s\n' "$rel"
+done < <(
+	cd "$REPO" && find . -name '.env*' \
+		-not -path '*/node_modules/*' \
+		-not -name '*.example' \
+		-not -name '*.bak*' \
+		-printf '%P\n' 2>/dev/null
+)
+
+# --- install dependencies ---------------------------------------------------
+# tanda pins linker = "hoisted" in bunfig.toml; the default isolated linker
+# creates paths long enough to break Android CMake builds. Running plain
+# `bun install` from the worktree root honours that automatically.
+if [[ -f $dest/package.json ]]; then
+	printf 'installing dependencies (this takes ~35s with a warm cache)...\n'
+	(cd "$dest" && bun install)
+fi
+
+# --- open as a Herdr workspace ----------------------------------------------
+label="$repo_name/$slug"
+existing=$("$HERDR" workspace list | jq -r --arg l "$label" \
+	'.result.workspaces[] | select(.label == $l) | .workspace_id' | head -n1)
+
+if [[ -n $existing ]]; then
+	ws="$existing"
+	pane=$("$HERDR" pane list --workspace "$ws" | jq -r '.result.panes[0].pane_id')
+	printf 'reusing workspace %s (%s)\n' "$ws" "$label"
+else
+	created=$("$HERDR" workspace create --cwd "$dest" --label "$label" --no-focus)
+	ws=$(printf '%s' "$created" | jq -r '.result.workspace.workspace_id')
+	pane=$(printf '%s' "$created" | jq -r '.result.root_pane.pane_id')
+	printf 'created workspace %s (%s)\n' "$ws" "$label"
+
+	# Fixed tab layout, so every project workspace looks the same and your hands
+	# know where things are: agents (the root tab), dev, review.
+	"$HERDR" tab rename "$("$HERDR" tab list --workspace "$ws" | jq -r '.result.tabs[0].tab_id')" agents >/dev/null 2>&1 || true
+
+	dev_tab=$("$HERDR" tab create --workspace "$ws" --label dev --no-focus 2>/dev/null | jq -r '.result.root_pane.pane_id // empty')
+	rev_tab=$("$HERDR" tab create --workspace "$ws" --label review --no-focus 2>/dev/null | jq -r '.result.root_pane.pane_id // empty')
+
+	# Seed the review tab with the diff against the branch point; leave dev at a
+	# prompt rather than auto-starting a server that may collide on a port.
+	[[ -n $rev_tab ]] && "$HERDR" pane run "$rev_tab" "git -C '$dest' status -sb && git -C '$dest' diff" >/dev/null 2>&1 || true
+	[[ -n $dev_tab ]] && "$HERDR" pane run "$dev_tab" "cd '$dest'" >/dev/null 2>&1 || true
+fi
+
+# --- optionally start an agent ----------------------------------------------
+if [[ -n $AGENT ]]; then
+	name="${AGENT_NAME:-$(printf '%s' "$slug" | tr -cd '[:alnum:]-' | cut -c1-32)}"
+	# herdr agent names must match [a-z][a-z0-9_-]{0,31}
+	name=$(printf '%s' "$name" | tr '[:upper:]' '[:lower:]')
+	[[ $name =~ ^[a-z] ]] || name="a$name"
+	[[ $AGENT == codex ]] && codex_trust_dir "$dest"
+	printf 'starting %s as "%s" in %s...\n' "$AGENT" "$name" "$pane"
+	if "$HERDR" agent start "$name" --kind "$AGENT" --pane "$pane"; then
+		printf 'agent "%s" ready\n' "$name"
+	else
+		printf 'agent did not reach ready state; inspect with:\n' >&2
+		printf '  herdr agent read %s --source recent-unwrapped --lines 60\n' "$name" >&2
+	fi
+fi
+
+printf '\nworktree : %s\nworkspace: %s\npane     : %s\n' "$dest" "$ws" "$pane"
+
+# Unattended work should prefer `codex exec`, which needs no TUI and no trust
+# prompt. Interactive panes are for watching or taking over.
+if [[ -z $AGENT ]]; then
+	printf '\nrun an agent unattended with:\n'
+	printf '  (cd %q && codex exec "your task here")\n' "$dest"
+fi

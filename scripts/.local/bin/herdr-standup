@@ -1,0 +1,113 @@
+#!/usr/bin/env bash
+# herdr-standup — what the fleet is doing, in one short report.
+#
+#   herdr-standup            human-readable summary
+#   herdr-standup --json     machine-readable
+#   herdr-standup --quiet    print nothing when nothing needs attention
+#
+# The point of --quiet is the cron case: a scheduled standup that only speaks
+# when an agent is blocked or has finished is signal; one that reports "all
+# working" every two hours is noise you will start ignoring.
+#
+# Never trusts agent_status alone. Herdr's detection reads the screen, and a
+# modal dialog can look idle - this script has seen a `done` agent that was
+# actually parked on a trust prompt having run nothing. For any agent that is
+# blocked or done it reads the pane and includes the last meaningful line.
+
+set -euo pipefail
+
+HERDR="${HERDR_BIN_PATH:-herdr}"
+command -v "$HERDR" >/dev/null 2>&1 || { printf 'herdr not on PATH\n' >&2; exit 1; }
+
+MODE="text"
+QUIET=0
+for a in "$@"; do
+	case "$a" in
+	--json) MODE="json" ;;
+	--quiet) QUIET=1 ;;
+	-h | --help)
+		sed -n '2,12p' "$0" | sed 's/^# \?//'
+		exit 0
+		;;
+	esac
+done
+
+if ! "$HERDR" status >/dev/null 2>&1; then
+	[[ $QUIET -eq 1 ]] && exit 0
+	printf 'herdr server is not running (systemctl --user start herdr)\n'
+	exit 0
+fi
+
+agents_json=$("$HERDR" agent list 2>/dev/null || printf '{"result":{"agents":[]}}')
+count=$(printf '%s' "$agents_json" | jq '.result.agents | length')
+
+# Pull the last non-empty, non-decoration line from a pane - the closest thing
+# to "what is it actually saying right now".
+pane_tail() {
+	"$HERDR" agent read "$1" --source visible --lines 40 2>/dev/null |
+		sed 's/\x1b\[[0-9;]*m//g' |
+		grep -vE '^[[:space:]]*$' |
+		grep -vE '^[[:space:]]*[─━═╭╰│┃▔▁]+[[:space:]]*$' |
+		tail -n 1 |
+		cut -c1-160
+}
+
+if [[ $MODE == json ]]; then
+	out='[]'
+	while IFS=$'\t' read -r name kind status ws; do
+		[[ -z ${name:-} ]] && continue
+		line=""
+		if [[ $status == blocked || $status == done ]]; then line=$(pane_tail "$name"); fi
+		out=$(printf '%s' "$out" | jq --arg n "$name" --arg k "$kind" --arg s "$status" \
+			--arg w "$ws" --arg l "$line" \
+			'. + [{name:$n, kind:$k, status:$s, workspace:$w, last_line:$l}]')
+	done < <(printf '%s' "$agents_json" |
+		jq -r '.result.agents[]? | [(.name // .pane_id), .agent, .agent_status, .workspace_id] | @tsv')
+	printf '%s\n' "$out"
+	exit 0
+fi
+
+blocked=$(printf '%s' "$agents_json" | jq '[.result.agents[]? | select(.agent_status=="blocked")] | length')
+done_n=$(printf '%s' "$agents_json" | jq '[.result.agents[]? | select(.agent_status=="done")] | length')
+working=$(printf '%s' "$agents_json" | jq '[.result.agents[]? | select(.agent_status=="working")] | length')
+
+if [[ $QUIET -eq 1 && $blocked -eq 0 && $done_n -eq 0 ]]; then exit 0; fi
+
+if [[ $count -eq 0 ]]; then
+	[[ $QUIET -eq 1 ]] && exit 0
+	printf 'No agents running.\n'
+else
+	printf '%s agent(s): %s working, %s blocked, %s done\n\n' "$count" "$working" "$blocked" "$done_n"
+	while IFS=$'\t' read -r name kind status ws cwd; do
+		[[ -z ${name:-} ]] && continue
+		case "$status" in
+		blocked) icon="[!]" ;;
+		done) icon="[+]" ;;
+		working) icon="[~]" ;;
+		*) icon="[ ]" ;;
+		esac
+		printf '%s %s (%s) - %s\n' "$icon" "$name" "$kind" "$status"
+		printf '    %s\n' "$(basename "${cwd:-?}")"
+		if [[ $status == blocked || $status == done ]]; then
+			line=$(pane_tail "$name")
+			[[ -n $line ]] && printf '    > %s\n' "$line"
+		fi
+	done < <(printf '%s' "$agents_json" |
+		jq -r '.result.agents[]? | [(.name // .pane_id), .agent, .agent_status, .workspace_id, .cwd] | @tsv')
+fi
+
+# Finished pipeline runs waiting on a human decision.
+runs_root="$HOME/.herdr/runs"
+if [[ -d $runs_root ]]; then
+	pending=$(find "$runs_root" -name 'change.diff' -mmin -1440 2>/dev/null | head -5)
+	if [[ -n $pending ]]; then
+		printf '\nPipeline runs from the last 24h:\n'
+		while IFS= read -r d; do
+			[[ -z $d ]] && continue
+			dir=$(dirname "$d")
+			n=$(wc -l <"$d" | tr -d ' ')
+			verdicts=$(grep -horE 'SHIP WITH FIXES|DO NOT SHIP|SHIP' "$dir"/review-*.md 2>/dev/null | sort -u | paste -sd'/' -)
+			printf '  %s - %s line diff%s\n' "${dir#"$runs_root"/}" "$n" "${verdicts:+ - ${verdicts}}"
+		done <<<"$pending"
+	fi
+fi

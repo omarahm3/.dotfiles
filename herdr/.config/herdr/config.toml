@@ -122,7 +122,7 @@ command = "mrgeek.last-focus.last-space"
 [[keys.command]]
 key = "prefix+f"
 type = "popup"
-command = "/home/mrgeek/.local/bin/herdr-sessionizer"
+command = "$HOME/.local/bin/herdr-sessionizer"
 width = "80%"
 height = "80%"
 
@@ -130,13 +130,13 @@ height = "80%"
 [[keys.command]]
 key = "prefix+shift+d"
 type = "shell"
-command = "/home/mrgeek/.local/bin/herdr-sessionizer /home/mrgeek/.dotfiles"
+command = "$HOME/.local/bin/herdr-sessionizer $HOME/.dotfiles"
 
 # tmux: bind-key -r K display-popup -E "~/.local/bin/tmux-director"
 [[keys.command]]
 key = "prefix+shift+k"
 type = "popup"
-command = "/home/mrgeek/.local/bin/herdr-director"
+command = "$HOME/.local/bin/herdr-director"
 width = "80%"
 height = "80%"
 
@@ -144,7 +144,7 @@ height = "80%"
 [[keys.command]]
 key = "prefix+shift+n"
 type = "popup"
-command = "/home/mrgeek/.local/bin/herdr-home"
+command = "$HOME/.local/bin/herdr-home"
 width = "80%"
 height = "80%"
 
@@ -152,7 +152,7 @@ height = "80%"
 [[keys.command]]
 key = "prefix+shift+f"
 type = "popup"
-command = "/home/mrgeek/.local/bin/herdr-runs common-commands"
+command = "$HOME/.local/bin/herdr-runs common-commands"
 width = "80%"
 height = "80%"
 
@@ -160,7 +160,7 @@ height = "80%"
 [[keys.command]]
 key = "prefix+i"
 type = "popup"
-command = "/home/mrgeek/.local/bin/herdr-cht"
+command = "$HOME/.local/bin/herdr-cht"
 width = "80%"
 height = "80%"
 
@@ -172,6 +172,15 @@ copy_on_select = true
 confirm_close = true
 
 agent_panel_sort = "spaces"
+
+# This box is headless and reached over SSH, so `system` notifications (and the
+# notify-send the herdr-* scripts call) have nowhere to render. `terminal` emits
+# an OSC 777/9 notification that the *outer* terminal on your laptop shows, so
+# agent done/blocked alerts survive the SSH hop.
+[ui.toast]
+delivery = "terminal"
+delay_seconds = 1
+
 [session]
 # tmux: tmux-resurrect + tmux-continuum
 resume_agents_on_restore = true
@@ -179,8 +188,22 @@ resume_agents_on_restore = true
 [experimental]
 pane_history = true
 
+# Agent worktrees. `New worktree` on a Git space checks out under
+# <directory>/<repo>/<branch-slug> and opens it as a grouped child workspace, so
+# each agent gets an isolated checkout instead of fighting over one working tree.
+[worktrees]
+directory = "~/.herdr/worktrees"
+
 [advanced]
 scrollback_limit_bytes = 10000000
+
+# Agents here often run with nobody attached (Hermes drives them over the socket
+# while you are away). The default headless canvas is 120x40, which makes agent
+# TUIs wrap badly and truncates what `pane read` can recover. Give the detached
+# server a roomier virtual terminal.
+[server]
+headless_cols = 200
+headless_rows = 50
 
 # Not portable from .tmux.conf:
 #   bind-key C-a send-prefix — no config needed, herdr sends a literal prefix key

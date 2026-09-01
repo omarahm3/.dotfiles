@@ -1,0 +1,6 @@
+# Project roots scanned by herdr-sessionizer (prefix+f).
+# One directory per line; each immediate subdirectory becomes a workspace.
+# '~' is expanded, trailing slashes and # comments are stripped.
+
+~/projects
+# ~/work  — does not exist on this host; fd errors out on missing roots

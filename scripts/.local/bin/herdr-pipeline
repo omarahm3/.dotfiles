@@ -1,0 +1,236 @@
+#!/usr/bin/env bash
+# herdr-pipeline — one author writes, two reviewers on different providers
+# critique, and the run is left on disk for a human to judge.
+#
+#   herdr-pipeline <branch> "task description" [options]
+#
+# Why the roles are split this way:
+#   Author   = Claude Max (opus[1m]) or OpenCode Go (glm-5.3). Both are
+#              flat-rate plans, so the long generative prompt is the cheap half.
+#   Review 1 = Codex on the $20 tier at xhigh effort. Scarce and deliberate, so
+#              it gets a short high-leverage prompt, never the authoring one.
+#   Review 2 = Agy Pro on gemini-3.1-pro-high. A different provider from both
+#              the author and the first reviewer, so the two can genuinely
+#              disagree instead of sharing a blind spot.
+#
+# Nothing is merged and nothing is pushed. The pipeline produces a diff and two
+# reviews; the decision stays with you.
+
+set -euo pipefail
+
+LIB="$(dirname "$(readlink -f "$0")")/herdr-agents-lib.sh"
+# shellcheck source=/dev/null
+source "$LIB"
+
+REPO="$HOME/projects/tanda"
+AUTHOR="claude"
+REVIEWERS="codex,agy"
+AUTHOR_MODEL=""
+BRANCH=""
+TASK=""
+KEEP_WORKTREE=1
+
+usage() {
+	cat <<'EOF'
+Usage: herdr-pipeline <branch> "<task>" [options]
+
+  <branch>              branch to create or reuse
+  <task>                what the author agent should do
+
+  --repo DIR            source repository (default: ~/projects/tanda)
+  --author KIND         claude | opencode | codex | agy   (default: claude)
+  --author-model NAME   override the author's model
+  --reviewers A,B       comma list; default: codex,agy. Use "none" to skip review
+  -h, --help            show this help
+
+The author never reviews its own work, and a reviewer that also authored is
+dropped from the review set automatically.
+
+Examples:
+  herdr-pipeline fix/settings-tests "Fix the failing settingsStore persist test"
+  herdr-pipeline chore/ts-strict "Make packages/shared pass tsc --strict" \
+      --author opencode --reviewers codex
+EOF
+}
+
+while [[ $# -gt 0 ]]; do
+	case "$1" in
+	--repo)
+		REPO="${2:?}"
+		shift 2
+		;;
+	--author)
+		AUTHOR="${2:?}"
+		shift 2
+		;;
+	--author-model)
+		AUTHOR_MODEL="${2:?}"
+		shift 2
+		;;
+	--reviewers)
+		REVIEWERS="${2:?}"
+		shift 2
+		;;
+	-h | --help)
+		usage
+		exit 0
+		;;
+	-*)
+		printf 'unknown option: %s\n' "$1" >&2
+		exit 1
+		;;
+	*)
+		if [[ -z $BRANCH ]]; then BRANCH="$1"; elif [[ -z $TASK ]]; then TASK="$1"; else
+			printf 'unexpected argument: %s\n' "$1" >&2
+			exit 1
+		fi
+		shift
+		;;
+	esac
+done
+
+[[ -n $BRANCH && -n $TASK ]] || {
+	usage >&2
+	exit 1
+}
+[[ -d $REPO/.git ]] || {
+	printf 'not a git repo: %s\n' "$REPO" >&2
+	exit 1
+}
+agent_available "$AUTHOR" || {
+	printf 'author agent unavailable: %s\n' "$AUTHOR" >&2
+	exit 1
+}
+
+HERDR="${HERDR_BIN_PATH:-herdr}"
+repo_name=$(basename "$REPO")
+slug=$(printf '%s' "$BRANCH" | tr '/' '-' | tr -cd '[:alnum:]._-')
+dest="${HERDR_WORKTREE_ROOT:-$HOME/.herdr/worktrees}/$repo_name/$slug"
+runs="$HOME/.herdr/runs/$repo_name/$slug"
+mkdir -p "$runs"
+
+log() { printf '\n\033[1m== %s\033[0m\n' "$*"; }
+
+# ---------------------------------------------------------------- provision --
+if [[ -d $dest ]]; then
+	log "reusing worktree $dest"
+else
+	log "creating worktree $dest"
+	mkdir -p "$(dirname "$dest")"
+	if git -C "$REPO" show-ref --verify --quiet "refs/heads/$BRANCH"; then
+		git -C "$REPO" worktree add "$dest" "$BRANCH" >/dev/null
+	else
+		git -C "$REPO" worktree add "$dest" -b "$BRANCH" >/dev/null
+	fi
+
+	# .env files are gitignored, so a fresh worktree has none and the server
+	# package fails immediately without them.
+	while IFS= read -r rel; do
+		mkdir -p "$dest/$(dirname "$rel")"
+		cp "$REPO/$rel" "$dest/$rel"
+	done < <(cd "$REPO" && find . -name '.env*' -not -path '*/node_modules/*' \
+		-not -name '*.example' -not -name '*.bak*' -printf '%P\n' 2>/dev/null)
+
+	if [[ -f $dest/package.json ]]; then
+		log "installing dependencies (~35s warm)"
+		(cd "$dest" && bun install >/dev/null 2>&1) || printf 'bun install failed; continuing\n' >&2
+	fi
+fi
+
+codex_trust_dir "$dest"
+base_sha=$(git -C "$dest" rev-parse HEAD)
+
+# ------------------------------------------------------------------- author --
+log "author: $AUTHOR ${AUTHOR_MODEL:+($AUTHOR_MODEL)}"
+author_prompt="$(repo_rules "$REPO")
+Task: $TASK
+
+Work only inside this checkout. Make the change, then verify it with the
+repository's own commands. Do not commit, do not push, and do not create a pull
+request. When you are done, state briefly what you changed and what you ran to
+verify it."
+
+(cd "$dest" && agent_run "$AUTHOR" "$author_prompt" "$AUTHOR_MODEL") \
+	>"$runs/author-$AUTHOR.md" 2>&1 || printf 'author exited non-zero; continuing to review\n' >&2
+
+# ------------------------------------------------------------------ the diff --
+git -C "$dest" add -A >/dev/null 2>&1 || true
+git -C "$dest" diff --cached "$base_sha" >"$runs/change.diff" 2>/dev/null || true
+git -C "$dest" reset >/dev/null 2>&1 || true
+
+diff_lines=$(wc -l <"$runs/change.diff" | tr -d ' ')
+if [[ $diff_lines -eq 0 ]]; then
+	printf '\nNo changes were produced. Author transcript: %s\n' "$runs/author-$AUTHOR.md"
+	exit 0
+fi
+log "diff: $diff_lines lines -> $runs/change.diff"
+
+# ------------------------------------------------------------------ reviews --
+if [[ $REVIEWERS != "none" ]]; then
+	review_prompt_base="$(repo_rules "$REPO")
+You are reviewing a change another agent made in this checkout. You did NOT
+write it. The task it was given was:
+
+  $TASK
+
+Review the working-tree changes (use git diff, and read the surrounding files
+for context). Report, in this order:
+1. Correctness bugs, with file:line.
+2. Anything that violates this repository's rules above.
+3. Whether the change actually accomplishes the task.
+4. A one-line verdict: SHIP, SHIP WITH FIXES, or DO NOT SHIP.
+
+Be specific and terse. Do not modify any files. Do not commit."
+
+	IFS=',' read -ra RVS <<<"$REVIEWERS"
+	for rv in "${RVS[@]}"; do
+		rv="$(printf '%s' "$rv" | tr -d ' ')"
+		[[ -z $rv ]] && continue
+		if [[ $rv == "$AUTHOR" ]]; then
+			printf 'skipping reviewer %s: it authored this change\n' "$rv" >&2
+			continue
+		fi
+		agent_available "$rv" || {
+			printf 'skipping reviewer %s: not installed\n' "$rv" >&2
+			continue
+		}
+		log "review: $rv"
+		if ! (cd "$dest" && agent_run "$rv" "$review_prompt_base") >"$runs/review-$rv.md" 2>&1; then
+			printf 'reviewer %s exited non-zero\n' "$rv" >&2
+		fi
+		# A reviewer that times out or is auto-denied writes a stub, not a
+		# review. Surface that instead of letting an empty file read as "no
+		# findings" in the standup.
+		if [[ ! -s "$runs/review-$rv.md" ]] ||
+			grep -qiE '^Error: timeout|no output produced' "$runs/review-$rv.md"; then
+			printf 'WARNING: reviewer %s produced no usable review (%s)\n' \
+				"$rv" "$(head -c 120 "$runs/review-$rv.md" 2>/dev/null | tr '\n' ' ')" >&2
+			mv "$runs/review-$rv.md" "$runs/review-$rv.FAILED.md" 2>/dev/null || true
+		fi
+	done
+fi
+
+# ----------------------------------------------------------------- workspace --
+if command -v "$HERDR" >/dev/null 2>&1 && "$HERDR" status >/dev/null 2>&1; then
+	label="$repo_name/$slug"
+	existing=$("$HERDR" workspace list 2>/dev/null | jq -r --arg l "$label" \
+		'.result.workspaces[]? | select(.label == $l) | .workspace_id' | head -n1)
+	if [[ -z $existing ]]; then
+		"$HERDR" workspace create --cwd "$dest" --label "$label" --no-focus >/dev/null 2>&1 || true
+	fi
+fi
+
+# -------------------------------------------------------------------- report --
+cat <<EOF
+
+$(printf '\033[1m== run complete\033[0m')
+
+worktree : $dest
+artifacts: $runs
+  author-$AUTHOR.md
+  change.diff  ($diff_lines lines)
+$(ls "$runs" 2>/dev/null | grep '^review-' | sed 's/^/  /')
+
+Nothing was committed or pushed. Review the diff, then merge yourself:
+  git -C $REPO merge $BRANCH
+EOF

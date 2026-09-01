@@ -1,0 +1,20 @@
+bun run test
+bun run typecheck
+bun run lint
+bun run lint:fix
+bun run test:mobile
+bun run test:server
+bun run test:shared
+bun run test:changed
+bun run dev:server
+bun run dev:mobile
+bun install
+bun outdated
+git status
+git pull
+git log --oneline -20
+git diff
+pm2 list
+pm2 logs --lines 50
+pm2 restart tanda-api
+pm2 restart tanda-expo
