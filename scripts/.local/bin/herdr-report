@@ -424,8 +424,13 @@ def main() -> int:
         ve = Path.home() / ".hermes/skills/openclaw-imports/visual-explainer/scripts/serve.py"
         if ve.exists():
             try:
-                r = subprocess.run([sys.executable, str(ve), "serve", str(out)],
-                                   capture_output=True, text=True, timeout=60)
+                # Pin the project folder to the repo. Without it serve.py infers
+                # the folder from the caller's cwd, so a report for tanda filed
+                # under whatever directory the pipeline happened to run from.
+                r = subprocess.run(
+                    [sys.executable, str(ve), "serve", str(out),
+                     "--project", run.parent.name],
+                    capture_output=True, text=True, timeout=60)
                 line = (r.stdout or r.stderr).strip().splitlines()
                 if line:
                     print(line[-1])
