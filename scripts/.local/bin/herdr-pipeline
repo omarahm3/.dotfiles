@@ -221,6 +221,17 @@ if command -v "$HERDR" >/dev/null 2>&1 && "$HERDR" status >/dev/null 2>&1; then
 fi
 
 # -------------------------------------------------------------------- report --
+# Every finished run gets a short visual summary in English and Arabic, light
+# and dark. Shaped for an ADHD reader: the next action leads, the verdict is
+# visible without scrolling.
+report_urls=""
+if command -v herdr-report >/dev/null 2>&1; then
+	log "report"
+	report_urls=$(herdr-report "$runs" --task "$TASK" --serve 2>&1 |
+		grep -oE 'https?://[^ ]+' || true)
+fi
+
+# -------------------------------------------------------------------- summary --
 cat <<EOF
 
 $(printf '\033[1m== run complete\033[0m')
@@ -230,6 +241,9 @@ artifacts: $runs
   author-$AUTHOR.md
   change.diff  ($diff_lines lines)
 $(ls "$runs" 2>/dev/null | grep '^review-' | sed 's/^/  /')
+${report_urls:+
+reports (tailscale only):
+$(printf '%s\n' "$report_urls" | sed 's/^/  /')}
 
 Nothing was committed or pushed. Review the diff, then merge yourself:
   git -C $REPO merge $BRANCH
