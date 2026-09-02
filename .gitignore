@@ -1,3 +1,9 @@
 
 __pycache__/
 *.pyc
+
+# herdr writes runtime state into its config dir, which is stowed as a symlink
+herdr/.config/herdr/*.log
+herdr/.config/herdr/.plugins.lock
+herdr/.config/herdr/session.json
+herdr/.config/herdr/session-history.json
