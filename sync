@@ -28,6 +28,16 @@ do_stow() {
       stow -vRt ~ "${extra[@]}" "$d"
       cd ~/.st && sudo make install clean && cd ~/.dotfiles || return
       ;;
+    herdr)
+      stow -vRt ~ "${extra[@]}" "$d"
+      # herdr does not discover plugins on disk, each one has to be registered
+      if command -v herdr >/dev/null; then
+        for manifest in ~/.config/herdr/plugins/*/herdr-plugin.toml; do
+          [[ -e "$manifest" ]] || continue
+          herdr plugin link "$(dirname "$manifest")"
+        done
+      fi
+      ;;
     *)
       stow -vRt ~ "${extra[@]}" "$d"
       ;;
