@@ -1,17 +1,3 @@
-hl.monitor({
-    output = "DP-2",
-    mode = "2560x1440@120",
-    position = "0x0",
-    scale = 1
-})
-
-hl.monitor({
-    output = "eDP-1",
-    mode = "2880x1800@90",
-    position = "480x1440",
-    scale = 1.8
-})
-
 hl.config({
     misc = {
         vrr = 1
@@ -37,3 +23,32 @@ hl.config({
         }
     }
 })
+
+-- Monitor layout is per machine, so each host owns a file under custom/hosts/
+-- named after its hostname. Keeping them apart stops the two machines from
+-- fighting over this file on every merge.
+
+local function current_host()
+    local file = assert(io.open("/etc/hostname", "r"), "hypr: cannot read /etc/hostname")
+    local name = file:read("l")
+    file:close()
+    return (name:match("^%s*(.-)%s*$"))
+end
+
+local host = current_host()
+local host_file = HOME .. "/.config/hypr/custom/hosts/" .. host .. ".lua"
+
+if is_file_exists(host_file) then
+    -- dofile, not require: a dotted hostname would break module-path mapping.
+    dofile(host_file)
+else
+    -- Deferred because the notification daemon is not up at config-parse time.
+    -- Without a host file the upstream catch-all leaves monitors auto-detected.
+    hl.on("hyprland.start", function()
+        hl.exec_cmd(
+            "notify-send --app-name=Hyprland --urgency=critical "
+            .. "'No monitor config for " .. host .. "' "
+            .. "'Create custom/hosts/" .. host .. ".lua - monitors are auto-detected until then'"
+        )
+    end)
+end
