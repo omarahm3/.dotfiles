@@ -47,7 +47,7 @@ do_stow() {
 # print conflicting target paths (relative to ~) from a dry run
 detect_conflicts() {
   stow -nvRt ~ "$1" 2>&1 \
-    | grep -oP '(?<=over existing target ).*?(?= since)' \
+    | grep -oP '(?<=over existing target ).*?(?= since)|(?<=existing target is not owned by stow: ).*|(?<=existing target is neither a link nor a directory: ).*' \
     || true
 }
 
