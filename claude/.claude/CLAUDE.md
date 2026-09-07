@@ -22,6 +22,9 @@ IMPORTANT: For strict enforcement, use the `cc` alias which injects these as sys
 - Follow existing project patterns exactly
 - Prefer explicit over clever code
 - Don't over-engineer or add unnecessary abstractions
+- **NEVER add systemd services/units** to make something run. Use the target
+  app's own plugin/extension mechanism. If it has none, say so and ask before
+  reaching for any process supervisor
 
 ## Workflow
 - **Read before write**: ALWAYS read relevant files before suggesting changes

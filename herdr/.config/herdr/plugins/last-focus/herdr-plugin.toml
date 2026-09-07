@@ -1,0 +1,19 @@
+id = "mrgeek.last-focus"
+name = "Last focus"
+version = "0.1.0"
+min_herdr_version = "0.8.0"
+description = "Toggle the previously focused space or tab, tmux last-window style"
+platforms = ["linux", "macos"]
+
+[[startup]]
+command = ["./bin/tracker-start"]
+
+[[actions]]
+id = "last-space"
+title = "Last space"
+command = ["./bin/last-space"]
+
+[[actions]]
+id = "last-window"
+title = "Last window"
+command = ["./bin/last-window"]

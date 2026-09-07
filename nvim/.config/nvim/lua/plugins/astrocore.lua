@@ -373,6 +373,20 @@ return {
 				-- configure global vim variables (vim.g)
 				-- NOTE: `mapleader` and `maplocalleader` must be set in the AstroNvim opts or before `lazy.setup`
 				-- This can be found in the `lua/lazy_setup.lua` file
+				-- Neovim only auto-selects OSC 52 when `clipboard` is unset, and AstroNvim sets
+				-- `unnamedplus`, so declare it explicitly to reach the local clipboard over SSH.
+				-- Paste reads the unnamed register; terminals rarely answer an OSC 52 read.
+				clipboard = {
+					name = "OSC 52",
+					copy = {
+						["+"] = require("vim.ui.clipboard.osc52").copy "+",
+						["*"] = require("vim.ui.clipboard.osc52").copy "*",
+					},
+					paste = {
+						["+"] = function() return vim.split(vim.fn.getreg "", "\n") end,
+						["*"] = function() return vim.split(vim.fn.getreg "", "\n") end,
+					},
+				},
 				tokyonight_style = "night",
 				catppuccin_flavour = "macchiato",
 				material_style = "deep ocean",

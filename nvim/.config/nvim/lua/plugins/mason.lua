@@ -25,7 +25,31 @@ return {
     opts = {
       ensure_installed = {
         "stylua",
+        "black",
+        "mypy",
+        "pylint",
         -- add more arguments for adding more null-ls sources
+      },
+      -- Prefer the project's local .venv binaries so Python linters/formatters
+      -- resolve project dependencies and type stubs (e.g. psycopg2,
+      -- types-psycopg2). Mason installs each tool in an isolated venv without
+      -- project deps, which otherwise causes spurious import-error/import-untyped.
+      handlers = {
+        black = function()
+          require("null-ls").register(
+            require("null-ls").builtins.formatting.black.with { prefer_local = ".venv/bin" }
+          )
+        end,
+        mypy = function()
+          require("null-ls").register(
+            require("null-ls").builtins.diagnostics.mypy.with { prefer_local = ".venv/bin" }
+          )
+        end,
+        pylint = function()
+          require("null-ls").register(
+            require("null-ls").builtins.diagnostics.pylint.with { prefer_local = ".venv/bin" }
+          )
+        end,
       },
     },
   },

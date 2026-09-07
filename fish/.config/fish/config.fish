@@ -94,3 +94,6 @@ set -x N_PREFIX "$HOME/n"; contains "$N_PREFIX/bin" $PATH; or set -a PATH "$N_PR
 fish_add_path /home/mrgeek/.opencode/bin
 
 set -x N_PREFIX "$HOME/n"; contains "$N_PREFIX/bin" $PATH; or set -a PATH "$N_PREFIX/bin"  # Added by n-install (see http://git.io/n-install-repo).
+
+# strix
+fish_add_path /home/mrgeek/.strix/bin
