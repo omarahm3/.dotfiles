@@ -1,0 +1,650 @@
+#!/usr/bin/env bash
+# herdr-sdlc — a full development lifecycle across every provider we have.
+#
+#   herdr-sdlc <branch> "task description" [options]
+#
+# The lane map, and why each seat is filled the way it is:
+#
+#   Planner    = Claude Max (opus). The most elegant reasoner available on a
+#                flat-rate plan, so a long planning prompt costs nothing. It
+#                writes the plan, then stays in the loop: it reads both reviews
+#                and decides what the implementer must fix. It never writes code.
+#   Implementer= OpenCode Go (glm-5.3). Strong at code, flat-rate, and cheap
+#                enough to run several revision cycles. Falls back to Codex, then
+#                to Claude Sonnet, so a dead provider degrades instead of failing.
+#   Reviewers  = Codex (gpt-5.6-terra) + Agy (gemini-3.1-pro-high). Two different
+#                companies from the planner AND from each other, so they can
+#                genuinely disagree instead of sharing a blind spot.
+#
+# The cycle: plan -> implement -> review x2 -> planner triages -> implement again.
+# It repeats until both reviewers say SHIP or the round budget runs out.
+#
+# Only after CI is green does a PR appear. A red PR is not a deliverable.
+
+set -euo pipefail
+
+LIB="$(dirname "$(readlink -f "$0")")/herdr-agents-lib.sh"
+# shellcheck source=/dev/null
+source "$LIB"
+
+REPO="$HOME/projects/tanda"
+BRANCH=""
+TASK=""
+BASE="develop"
+MAX_ROUNDS=3
+PLANNER="claude"
+IMPLEMENTER="opencode"
+REVIEWERS="codex,agy"
+DRAFT_PR=1
+NO_PR=0
+
+usage() {
+	cat <<'EOF'
+Usage: herdr-sdlc <branch> "<task>" [options]
+
+  <branch>              branch to create or reuse
+  <task>                what should be built
+
+  --repo DIR            source repository (default: ~/projects/tanda)
+  --base REF            branch to cut from and target (default: develop)
+  --rounds N            max implement/review cycles (default: 3)
+  --planner KIND        claude | codex | agy | opencode   (default: claude)
+  --implementer KIND    opencode | codex | claude         (default: opencode)
+  --reviewers A,B       comma list (default: codex,agy)
+  --no-pr               stop after CI, do not open a pull request
+  --ready               open a ready PR instead of a draft
+  -h, --help            show this help
+
+The lifecycle:
+  1. PLAN       planner writes a plan; no code is touched
+  2. IMPLEMENT  implementer executes the plan (falls back if a provider dies)
+  3. REVIEW     two reviewers on other providers judge the diff independently
+  4. TRIAGE     planner reads both reviews and issues fix instructions
+  5. repeat 2-4 until both reviewers SHIP, or --rounds is exhausted
+  6. VERIFY     local gates, then push and wait for real CI to go green
+  7. PR         opened only when CI passes; report written either way
+
+Examples:
+  herdr-sdlc feat/vault-invites "Let a space owner revoke a pending invite"
+  herdr-sdlc fix/mrg-512 "Settings do not hydrate on cold boot" --rounds 2
+EOF
+}
+
+while [[ $# -gt 0 ]]; do
+	case "$1" in
+	--repo) REPO="${2:?}"; shift 2 ;;
+	--base) BASE="${2:?}"; shift 2 ;;
+	--rounds) MAX_ROUNDS="${2:?}"; shift 2 ;;
+	--planner) PLANNER="${2:?}"; shift 2 ;;
+	--implementer) IMPLEMENTER="${2:?}"; shift 2 ;;
+	--reviewers) REVIEWERS="${2:?}"; shift 2 ;;
+	--no-pr) NO_PR=1; shift ;;
+	--ready) DRAFT_PR=0; shift ;;
+	-h | --help) usage; exit 0 ;;
+	-*) printf 'unknown option: %s\n' "$1" >&2; exit 1 ;;
+	*)
+		if [[ -z $BRANCH ]]; then BRANCH="$1"
+		elif [[ -z $TASK ]]; then TASK="$1"
+		else printf 'unexpected argument: %s\n' "$1" >&2; exit 1; fi
+		shift ;;
+	esac
+done
+
+[[ -n $BRANCH && -n $TASK ]] || { usage >&2; exit 1; }
+[[ -d $REPO/.git ]] || { printf 'not a git repo: %s\n' "$REPO" >&2; exit 1; }
+agent_available "$PLANNER" || { printf 'planner unavailable: %s\n' "$PLANNER" >&2; exit 1; }
+
+HERDR="${HERDR_BIN_PATH:-herdr}"
+repo_name=$(basename "$REPO")
+slug=$(printf '%s' "$BRANCH" | tr '/' '-' | tr -cd '[:alnum:]._-')
+dest="${HERDR_WORKTREE_ROOT:-$HOME/.herdr/worktrees}/$repo_name/$slug"
+runs="$HOME/.herdr/runs/$repo_name/$slug"
+mkdir -p "$runs"
+
+# ONE RUN PER BRANCH — a hard, kernel-enforced singleton.
+#
+# Two runs on one branch share a worktree, a runs/ directory, and every stage
+# artifact: they truncate each other's transcripts, race the same .done
+# sentinels, and put two implementers in one tree. There is no recovering a
+# diff from that, so it must be impossible rather than merely discouraged.
+#
+# flock is the fast path because the kernel releases it when the holder dies,
+# however it dies — unlike a pidfile, which outlives a SIGKILL.
+#
+# But flock alone is NOT sufficient here, and this is measured, not theoretical:
+# every child this script forks (`sleep`, the herdr calls, the agents) INHERITS
+# fd 9, and bash cannot mark it close-on-exec. SIGKILL the run and its orphaned
+# children keep holding the lock forever — the branch is then permanently
+# unrunnable, which is worse than the bug the lock exists to prevent.
+#
+# So: flock for the live case, and a recorded-pid liveness check to distinguish
+# "a real run holds this" from "only orphans do". A dead holder means the run
+# crashed; reap anything still sitting in its worktree and take the lock.
+LOCKFILE="$runs/.run.lock"
+exec 9>"$LOCKFILE"
+if ! flock -n 9; then
+	holder=$(cat "$runs/.run.pid" 2>/dev/null || echo '')
+	if [[ -n $holder && $holder =~ ^[0-9]+$ ]] && kill -0 "$holder" 2>/dev/null; then
+		printf 'a run is ALREADY active on %s (pid %s); refusing to start a second.\n' \
+			"$BRANCH" "$holder" >&2
+		printf 'watch it:  ls -t %s\n' "$runs" >&2
+		exit 9
+	fi
+	# Holder is dead; only inherited fds hold the lock. Clear the worktree of
+	# anything the crashed run left behind before taking the pen.
+	printf 'stale lock on %s (holder %s is gone); reclaiming\n' \
+		"$BRANCH" "${holder:-unknown}" >&2
+	reap_agents_in_dir "$dest" || printf 'killed orphaned agents left in %s\n' "$dest" >&2
+	rm -f "$LOCKFILE"
+	exec 9>"$LOCKFILE"
+	flock -n 9 || { printf 'could not reclaim the lock on %s; aborting.\n' "$BRANCH" >&2; exit 9; }
+fi
+printf '%s' "$$" >"$runs/.run.pid"
+# Release is implicit on exit (fd closes), but drop the pid so status is honest.
+trap 'rm -f "$runs/.run.pid"' EXIT
+
+log() { printf '\n\033[1m== %s\033[0m\n' "$*"; }
+warn() { printf '\033[33m!! %s\033[0m\n' "$*" >&2; }
+
+# Every agent runs inside a Herdr pane when the server is up, so `herdr agent list`
+# shows exactly who is working and `herdr pane read` shows what they are doing. If
+# Herdr is unavailable the stage still runs headlessly - visibility is a feature of
+# the run, not a precondition for it.
+WS_LABEL=""
+run_agent_stage() {
+	local kind="$1" prompt="$2" out="$3" title="$4" model="${5:-}"
+	local pfile="$runs/.prompt-$$"
+	printf '%s' "$prompt" >"$pfile"
+	# The subshell cd is load-bearing: agent_run_pane creates the pane with --cwd
+	# "$PWD", and this script's own cwd is wherever the caller launched it. Without
+	# it the agent runs in $HOME and edits nothing (or, worse, the wrong tree).
+	# Capture the real exit code. `if (subshell); then` swallows it — a later
+	# `$?` reads the IF, not the function, so a 124 timeout was indistinguishable
+	# from a generic failure at the call site.
+	local rc=0
+	(cd "$dest" && agent_run_pane "$kind" "$pfile" "$out" "$WS_LABEL" "$title" "$model") || rc=$?
+	if ((rc == 0)); then
+		rm -f "$pfile"
+		return 0
+	fi
+	rm -f "$pfile"
+	if ((rc == 10)); then
+		warn "herdr unavailable; running $kind headlessly (not visible in herdr)"
+		(cd "$dest" && agent_run "$kind" "$prompt" "$model") >"$out" 2>&1
+		return $?
+	fi
+	return "$rc"
+}
+
+# An agent that dies must not silently produce an empty artifact that later reads
+# as "nothing to say". Every stage checks its own output before continuing.
+stage_ok() {
+	local f="$1"
+	[[ -s $f ]] || return 1
+	grep -qiE '^Error: timeout|no output produced|^error:' "$f" && return 1
+	# A shell-level E2BIG lands IN the output file and otherwise reads like a real
+	# answer: the next stage happily consumes "argument list too long" as its
+	# instructions. Seen for real — the implementer said its fix list "contains
+	# only a corrupted shell error" and re-did the whole task from scratch.
+	grep -qiE 'argument list too long|:[[:space:]]*command not found' "$f" && return 1
+	return 0
+}
+
+# Reviews are transcripts, not verdicts: a codex review here reached 1.5 MB of
+# tool-call spam. Feeding that verbatim into triage is what blew the arg limit and
+# would bury the planner's signal anyway. Keep the head (findings + reasoning) and
+# the tail (the VERDICT line, which is always last).
+digest() {
+	local f="$1" head_kb="${2:-24}" tail_kb="${3:-8}"
+	[[ -s $f ]] || return 0
+	local size; size=$(stat -c%s "$f")
+	if ((size <= (head_kb + tail_kb) * 1024)); then cat "$f"; return 0; fi
+	head -c "$((head_kb * 1024))" "$f"
+	printf '\n\n[... %s KB of transcript elided; tail follows ...]\n\n' "$(((size - (head_kb + tail_kb) * 1024) / 1024))"
+	tail -c "$((tail_kb * 1024))" "$f"
+}
+
+# ------------------------------------------------------------------ provision --
+if [[ -d $dest ]]; then
+	log "reusing worktree $dest"
+else
+	log "creating worktree $dest (from $BASE)"
+	mkdir -p "$(dirname "$dest")"
+	git -C "$REPO" fetch origin --quiet 2>/dev/null || true
+	if git -C "$REPO" show-ref --verify --quiet "refs/heads/$BRANCH"; then
+		git -C "$REPO" worktree add "$dest" "$BRANCH" >/dev/null
+	else
+		git -C "$REPO" worktree add "$dest" -b "$BRANCH" "origin/$BASE" >/dev/null 2>&1 ||
+			git -C "$REPO" worktree add "$dest" -b "$BRANCH" "$BASE" >/dev/null
+	fi
+
+	# .env files are gitignored, so a fresh worktree has none and the server
+	# package fails immediately without them.
+	while IFS= read -r rel; do
+		mkdir -p "$dest/$(dirname "$rel")"
+		cp "$REPO/$rel" "$dest/$rel"
+	done < <(cd "$REPO" && find . -name '.env*' -not -path '*/node_modules/*' \
+		-not -name '*.example' -not -name '*.bak*' -printf '%P\n' 2>/dev/null)
+
+	if [[ -f $dest/package.json ]]; then
+		log "installing dependencies"
+		(cd "$dest" && bun install >/dev/null 2>&1) || warn "bun install failed; continuing"
+	fi
+fi
+
+codex_trust_dir "$dest"
+base_sha=$(git -C "$dest" rev-parse HEAD)
+# Named so `herdr workspace list` reads as repo/branch, matching the runs dir.
+WS_LABEL="$repo_name/$slug"
+RULES="$(repo_rules "$REPO")"
+
+# ----------------------------------------------------------------- 1. PLAN --
+log "plan: $PLANNER"
+plan_prompt="$RULES
+You are the PLANNER. You do not write code in this step.
+
+Task: $TASK
+
+Read the parts of this repository the task touches, then write an implementation
+plan another agent will execute literally. Include:
+1. Root cause or the precise thing to build, with file:line evidence you verified
+   by reading the code - not assumption.
+2. The exact files to change, and what changes in each.
+3. The tests to write, and where they belong per this repo's conventions.
+4. The verification commands a reader can run.
+5. Anything explicitly OUT of scope.
+
+Be concrete and terse. If the task is ambiguous, state the interpretation you
+chose and why. Do not modify any file. Do not commit."
+
+run_agent_stage "$PLANNER" "$plan_prompt" "$runs/plan.md" "plan:$PLANNER" ||
+	warn "planner exited non-zero"
+stage_ok "$runs/plan.md" || { printf 'planner produced no usable plan; stopping.\n' >&2; exit 1; }
+log "plan -> $runs/plan.md"
+
+# ------------------------------------------------- implement with fallbacks --
+# A provider can be down, rate limited, or refuse. Degrade through the lane
+# instead of failing the run.
+#
+# A single dead MODEL is not a dead PROVIDER: glm-5.3 returned a 500
+# ("UnknownError / Unexpected server error") while opencode itself was healthy and
+# its sibling models answered fine. So walk the opencode model list first and only
+# then change provider — bailing to codex on the first 500 wastes the flat-rate
+# lane and silently moves spend onto a metered one.
+OPENCODE_LANE="${OPENCODE_LANE:-opencode-go/glm-5.3,opencode-go/deepseek-v4-pro,opencode-go/kimi-k2.7-code,opencode-go/minimax-m3,opencode-go/qwen3.7-plus}"
+
+implement() {
+	local prompt="$1" out="$2" kind model
+	local -a lane=()
+	case "$IMPLEMENTER" in
+		opencode)
+			local -a OCM=()
+			IFS=',' read -ra OCM <<<"$OPENCODE_LANE"
+			for model in "${OCM[@]}"; do lane+=("opencode|$model"); done
+			lane+=("codex|" "claude|sonnet") ;;
+		codex) lane+=("codex|" "claude|sonnet") ;;
+		claude) lane+=("claude|sonnet" "codex|") ;;
+		*) warn "unsupported implementer: $IMPLEMENTER"; return 1 ;;
+	esac
+
+	# PROVIDER CIRCUIT BREAKER.
+	# Walking sibling models is right for a dead MODEL (a 500 on one slug), but
+	# wrong for a sick PROVIDER: when opencode itself wedges, every model in the
+	# lane burns a full HERDR_PANE_TIMEOUT (3600s) doing nothing. Five models x two
+	# rounds = 10 hours of a run looking busy while producing zero diff — that is
+	# how a 30-hour "running" run happened. Two consecutive timeouts on one
+	# provider means the provider is the problem, not the model: abandon its
+	# remaining models and change lane immediately.
+	local timeouts=0 last_kind=""
+	local entry before after
+	for entry in "${lane[@]}"; do
+		kind="${entry%%|*}" model="${entry#*|}"
+		agent_available "$kind" || continue
+		if [[ $kind == "$last_kind" ]] && ((timeouts >= 2)); then
+			warn "provider $kind timed out $timeouts times in a row; skipping its remaining models"
+			continue
+		fi
+		[[ $kind == "$last_kind" ]] || timeouts=0
+		last_kind="$kind"
+		log "implement: $kind ${model:+($model)}"
+
+		# Fingerprint the tree: an agent that errors mid-run still exits 0 and
+		# still writes a plausible transcript. "Did the working tree change?" is
+		# the only honest success test — two full rounds were burned on a model
+		# that read files, wrote prose, and edited nothing.
+		before=$(git -C "$dest" status --porcelain 2>/dev/null | sort | md5sum)
+		run_agent_stage "$kind" "$prompt" "$out" "implement:$kind" "$model"
+		local rc=$?
+		after=$(git -C "$dest" status --porcelain 2>/dev/null | sort | md5sum)
+
+		# Transcript command/test errors are not agent exit failures. Review and
+		# local gates judge the resulting code, not a regex over its transcript.
+		if ((rc == 0)) && [[ -s $out && $before != "$after" ]]; then
+			printf '%s' "$kind" >"$runs/.last-implementer"
+			return 0
+		fi
+
+		# A TIMEOUT THAT ALREADY CHANGED THE TREE IS NOT A FAILURE.
+		# rc 124 means the pane budget expired, which says nothing about whether
+		# the work got done. glm-5.3 finished the entire implementation, timed
+		# out on the 3600s poll, was declared failed, and the lane then walked
+		# every remaining model — each of which opened a tree that ALREADY
+		# contained the finished work, changed nothing, and was itself declared
+		# failed. That loop cannot terminate usefully and burns the whole lane.
+		# If the tree moved, keep the work and let review judge it.
+		if ((rc == 124)) && [[ $before != "$after" ]]; then
+			warn "implementer $kind ${model:+($model) }timed out but HAD already changed the tree; keeping its work"
+			printf '%s' "$kind" >"$runs/.last-implementer"
+			return 0
+		fi
+
+		# ALREADY-DONE IS NOT FAILURE.
+		# "The tree changed" is the right success test for a FRESH round, but it is
+		# wrong when a round is resumed: if an earlier round already applied the
+		# work, a correct implementer reads the code, finds nothing to do, and
+		# exits clean with no diff — indistinguishable from an agent that did
+		# nothing. The whole lane then walks, each model finds the same finished
+		# tree, and the run reports "every implementer failed" over work that was
+		# complete and green. If the tree was ALREADY dirty relative to the base
+		# when this round started, a no-op is success; let review judge the code.
+		# A worktree whose previous round was COMMITTED is clean, not dirty, so the
+		# porcelain test above sees nothing and every implementer in the lane gets
+		# declared failed over a finished tree. Five models burned two hours that
+		# way. Work that differs from the base counts as work, committed or not.
+		if ((rc == 0)) && [[ $before == "$after" ]] &&
+			[[ -n $(git -C "$dest" status --porcelain 2>/dev/null) ||
+			-n $(git -C "$dest" diff --name-only "$BASE"...HEAD 2>/dev/null) ]]; then
+			warn "implementer $kind ${model:+($model) }changed nothing, but the tree already carries work; treating as done"
+			printf '%s' "$kind" >"$runs/.last-implementer"
+			return 0
+		fi
+
+		if ((rc == 0)) && [[ $before == "$after" ]]; then
+			warn "implementer $kind ${model:+($model) }exited clean but changed no files; falling back"
+		else
+			((rc == 124)) && timeouts=$((timeouts + 1))
+			warn "implementer $kind ${model:+($model) }failed (rc=$rc); falling back"
+		fi
+
+		# Preserve partial work. Stop rather than destroy edits or let another
+		# implementer overwrite them; the operator can inspect and resume safely.
+		if [[ $before != "$after" ]]; then
+			warn "failed implementer left changes; preserving tree and stopping for inspection"
+			return 1
+		fi
+	done
+	return 1
+}
+
+round=1
+verdict_state="unknown"
+while ((round <= MAX_ROUNDS)); do
+	log "───── round $round of $MAX_ROUNDS ─────"
+
+	# --------------------------------------------------------- 2. IMPLEMENT --
+	if ((round == 1)); then
+		impl_prompt="$RULES
+You are the IMPLEMENTER. Another agent wrote the plan below. Execute it.
+
+Task: $TASK
+
+--- PLAN ---
+$(cat "$runs/plan.md")
+--- END PLAN ---
+
+Follow the plan. If you find it is wrong about a fact in the code, say so
+explicitly in your final message and explain what you did instead - do not
+silently diverge. Write the tests the plan calls for. Verify with this
+repository's own commands and report the REAL output. Do not commit, do not
+push, do not open a pull request."
+	else
+		impl_prompt="$RULES
+You are the IMPLEMENTER. You already made a change; two independent reviewers
+found problems, and the planner triaged them into the instructions below.
+
+Task: $TASK
+
+--- FIX INSTRUCTIONS ---
+$(cat "$runs/triage-$((round - 1)).md")
+--- END FIX INSTRUCTIONS ---
+
+Apply these fixes to the existing working tree. Do not revert unrelated work.
+Re-run the verification commands and report the REAL output. Do not commit, do
+not push, do not open a pull request."
+	fi
+
+	implement "$impl_prompt" "$runs/implement-$round.md" || {
+		printf 'every implementer in the lane failed; stopping.\n' >&2
+		exit 1
+	}
+
+	# ------------------------------------------------------------- the diff --
+	git -C "$dest" add -A >/dev/null 2>&1 || true
+	git -C "$dest" diff --cached "$base_sha" >"$runs/change-$round.diff" 2>/dev/null || true
+	git -C "$dest" reset >/dev/null 2>&1 || true
+	diff_lines=$(wc -l <"$runs/change-$round.diff" | tr -d ' ')
+	if [[ $diff_lines -eq 0 ]]; then
+		printf '\nRound %s produced no changes. Transcript: %s\n' "$round" "$runs/implement-$round.md"
+		exit 0
+	fi
+	log "diff: $diff_lines lines"
+
+	# -------------------------------------------------------------- 3. REVIEW --
+	review_prompt="$RULES
+You are REVIEWING a change written by a different agent. You did NOT write it.
+
+The task was: $TASK
+
+The plan it was given is in plan.md at the repo root of this run; the change is
+in the working tree. Review the working-tree changes (use git diff, and read the
+surrounding files for context). Report, in this order:
+1. Correctness bugs, with file:line.
+2. Anything that violates this repository's rules above.
+3. Whether the change actually accomplishes the task as planned.
+4. A final line, exactly: VERDICT: SHIP  or  VERDICT: SHIP WITH FIXES  or  VERDICT: DO NOT SHIP
+
+Be specific and terse. Do not modify any files. Do not commit."
+
+	ships=0 reviewed=0
+	IFS=',' read -ra RVS <<<"$REVIEWERS"
+
+	# A reviewer that implemented this round cannot judge its own work, so it is
+	# dropped. Dropping it silently is what broke a whole run: the fallback made
+	# codex the implementer, codex was skipped as a reviewer, and ONE reviewer's
+	# three verdicts got reported as a cross-provider review. Substitute another
+	# provider instead, so the count of independent judges never quietly falls.
+	impl_now="$(cat "$runs/.last-implementer" 2>/dev/null)"
+	for rv in "${RVS[@]}"; do
+		[[ "$(printf '%s' "$rv" | tr -d ' ')" == "$impl_now" ]] || continue
+		for sub in claude opencode codex agy; do
+			[[ $sub == "$impl_now" ]] && continue
+			[[ ",$REVIEWERS," == *",$sub,"* ]] && continue
+			agent_available "$sub" || continue
+			warn "reviewer $impl_now implemented this round; substituting $sub"
+			RVS+=("$sub")
+			break
+		done
+	done
+
+	for rv in "${RVS[@]}"; do
+		rv="$(printf '%s' "$rv" | tr -d ' ')"
+		[[ -z $rv ]] && continue
+		[[ $rv == "$impl_now" ]] && {
+			warn "skipping reviewer $rv: it implemented this round"
+			continue
+		}
+		agent_available "$rv" || { warn "skipping reviewer $rv: not installed"; continue; }
+		log "review: $rv"
+		run_agent_stage "$rv" "$review_prompt" "$runs/review-$round-$rv.md" "review$round:$rv" || true
+		if ! stage_ok "$runs/review-$round-$rv.md"; then
+			warn "reviewer $rv produced no usable review"
+			mv "$runs/review-$round-$rv.md" "$runs/review-$round-$rv.FAILED.md" 2>/dev/null || true
+			continue
+		fi
+		reviewed=$((reviewed + 1))
+		# Only an explicit unqualified SHIP counts. "SHIP WITH FIXES" is not a ship.
+		if grep -qE '^VERDICT:[[:space:]]*SHIP[[:space:]]*$' "$runs/review-$round-$rv.md"; then
+			ships=$((ships + 1))
+		fi
+	done
+
+	if ((reviewed == 0)); then
+		warn "no reviewer produced a verdict this round; treating as unreviewed"
+	elif ((ships == reviewed)); then
+		log "all $reviewed reviewers say SHIP"
+		verdict_state="ship"
+		break
+	fi
+
+	if ((round == MAX_ROUNDS)); then
+		verdict_state="rounds_exhausted"
+		warn "round budget exhausted with unresolved review findings"
+		break
+	fi
+
+	# -------------------------------------------------------------- 4. TRIAGE --
+	log "triage: $PLANNER"
+	triage_prompt="$RULES
+You are the PLANNER again. You wrote the plan; a different agent implemented it;
+two other agents reviewed it. Their reviews are below.
+
+Task: $TASK
+
+--- YOUR ORIGINAL PLAN ---
+$(cat "$runs/plan.md")
+--- REVIEWS ---
+$(for r in "$runs"/review-"$round"-*.md; do
+	[[ -e $r ]] || continue
+	printf '\n===== %s =====\n' "$(basename "$r")"
+	digest "$r"
+done)
+--- END REVIEWS ---
+
+Reviewers can be wrong, and they can contradict each other. Decide. Produce a
+numbered list of concrete fixes the implementer must apply, each with the file
+and what to change. Explicitly DROP any finding you judge incorrect or out of
+scope, and say in one line why. If a review revealed the plan itself was wrong,
+say so and correct it. Output only the fix list. Do not modify any file."
+
+	run_agent_stage "$PLANNER" "$triage_prompt" "$runs/triage-$round.md" "triage$round:$PLANNER" || true
+	stage_ok "$runs/triage-$round.md" || {
+		warn "planner triage failed; stopping with the current diff"
+		verdict_state="triage_failed"
+		break
+	}
+	round=$((round + 1))
+done
+
+# ------------------------------------------------------------- 5. LOCAL GATES --
+# Push nothing until the repo's own checks pass locally. A red PR is not a
+# deliverable, and burning CI minutes to discover a typecheck error is waste.
+log "local gates"
+gates_ok=1
+: >"$runs/gates.log"
+if [[ -f $dest/package.json ]]; then
+	for script in typecheck lint:src test:server test:shared; do
+		if bun --cwd "$dest" run --silent "$script" --help >/dev/null 2>&1 ||
+			grep -q "\"$script\"" "$dest/package.json" 2>/dev/null; then
+			printf '\n### %s\n' "$script" >>"$runs/gates.log"
+			if (cd "$dest" && bun run "$script" >>"$runs/gates.log" 2>&1); then
+				printf '  %-14s PASS\n' "$script"
+			else
+				printf '  %-14s FAIL\n' "$script"
+				gates_ok=0
+			fi
+		fi
+	done
+fi
+
+if ((gates_ok == 0)); then
+	warn "local gates failed - not pushing. See $runs/gates.log"
+	verdict_state="gates_failed"
+fi
+
+# ------------------------------------------------------ 6. COMMIT / PUSH / CI --
+pr_url=""
+ci_state="not_run"
+if ((gates_ok == 1)) && ((NO_PR == 0)); then
+	log "commit + push"
+	commit_msg="$(printf '%s\n\nPlanned by %s, implemented by %s, reviewed by %s.\nRun artifacts: %s\n' \
+		"$TASK" "$PLANNER" "$(cat "$runs/.last-implementer" 2>/dev/null || echo "$IMPLEMENTER")" \
+		"$REVIEWERS" "$runs")"
+	git -C "$dest" add -A
+	if git -C "$dest" diff --cached --quiet; then
+		warn "nothing staged to commit"
+	else
+		git -C "$dest" -c user.name="$(git -C "$REPO" config user.name)" \
+			-c user.email="$(git -C "$REPO" config user.email)" \
+			commit -q -m "$commit_msg"
+	fi
+	git -C "$dest" push -u origin "$BRANCH" --quiet 2>&1 | tail -2 || warn "push failed"
+
+	if command -v gh >/dev/null 2>&1; then
+		existing=$(gh pr list --repo "$(git -C "$dest" remote get-url origin |
+			sed -E 's#.*[:/]([^/]+/[^/]+?)(\.git)?$#\1#')" \
+			--head "$BRANCH" --json url --jq '.[0].url' 2>/dev/null || true)
+		if [[ -n $existing ]]; then
+			pr_url="$existing"
+			log "PR exists: $pr_url"
+		else
+			log "opening PR"
+			pr_body="$(printf 'Planned by **%s**, implemented by **%s**, independently reviewed by **%s**.\n\n## Task\n%s\n\n## Plan\n%s\n\n---\nRun artifacts: `%s`\n' \
+				"$PLANNER" "$(cat "$runs/.last-implementer" 2>/dev/null)" "$REVIEWERS" \
+				"$TASK" "$(head -c 2000 "$runs/plan.md")" "$runs")"
+			pr_url=$(cd "$dest" && gh pr create --base "$BASE" --head "$BRANCH" \
+				--title "$TASK" --body "$pr_body" \
+				$([[ $DRAFT_PR == 1 ]] && printf -- '--draft') 2>&1 | grep -oE 'https://[^ ]+' | head -1 || true)
+		fi
+
+		if [[ -n $pr_url ]]; then
+			log "waiting for CI (this is the real gate)"
+			if (cd "$dest" && gh pr checks "$pr_url" --watch --interval 20 >"$runs/ci.log" 2>&1); then
+				ci_state="green"
+				log "CI green"
+				[[ $DRAFT_PR == 1 ]] && (cd "$dest" && gh pr ready "$pr_url" >/dev/null 2>&1 &&
+					log "PR marked ready for review")
+			else
+				ci_state="red"
+				warn "CI is NOT green. See $runs/ci.log"
+			fi
+		fi
+	else
+		warn "gh not installed; skipping PR"
+	fi
+fi
+
+# ------------------------------------------------------------------- 7. REPORT --
+report_urls=""
+if command -v herdr-report >/dev/null 2>&1; then
+	log "report"
+	report_urls=$(herdr-report "$runs" --task "$TASK" --serve 2>&1 |
+		grep -oE 'https?://[^ ]+' || true)
+fi
+
+# ------------------------------------------------------------------ summary --
+cat <<EOF
+
+$(printf '\033[1m== lifecycle complete\033[0m')
+
+lanes    : plan=$PLANNER  impl=$(cat "$runs/.last-implementer" 2>/dev/null || echo "$IMPLEMENTER")  review=$REVIEWERS
+rounds   : $round of $MAX_ROUNDS
+review   : $verdict_state
+gates    : $([[ $gates_ok == 1 ]] && echo PASS || echo FAIL)
+ci       : $ci_state
+workspace: ${WS_LABEL}   (herdr workspace list)
+worktree : $dest
+artifacts: $runs
+$(ls "$runs" 2>/dev/null | sed 's/^/  /')
+${pr_url:+
+PR: $pr_url}${report_urls:+
+report (tailscale only):
+$(printf '%s\n' "$report_urls" | sed 's/^/  /')}
+
+$(if [[ $ci_state == green ]]; then
+	printf 'CI is green and the PR is ready for YOUR review. Nothing was merged.'
+elif [[ $ci_state == red ]]; then
+	printf 'CI is RED. Read %s before touching the PR.' "$runs/ci.log"
+else
+	printf 'No PR was opened. Review the diff in the worktree first.'
+fi)
+EOF
