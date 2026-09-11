@@ -37,6 +37,10 @@ AGENT_AGY="${AGENT_AGY:-$(_resolve_agent agy "$HOME/.local/bin/agy")}"
 MODEL_OPENCODE="${MODEL_OPENCODE:-opencode-go/glm-5.3}"
 MODEL_OPENCODE_CHEAP="${MODEL_OPENCODE_CHEAP:-opencode/mimo-v2.5-free}"
 MODEL_AGY="${MODEL_AGY:-gemini-3.1-pro-high}"
+# Claude Code's implementer seat. Sonnet, not opus: opus holds the planner and
+# triage seats, and one model must not both author and judge its own work.
+# Flat-rate on Claude Max, so it is a real fallback when opencode-go is walled.
+MODEL_CLAUDE_IMPL="${MODEL_CLAUDE_IMPL:-sonnet}"
 # Codex top tier available to a ChatGPT (OAuth) account. Verified 6 Sep 2026:
 # gpt-5.6-terra / gpt-5.6-sol / gpt-5.5 work; every *-codex slug (gpt-5.3-codex,
 # gpt-5.6-codex) returns HTTP 400 "not supported when using Codex with a ChatGPT
@@ -149,7 +153,11 @@ _agent_reaper_skip() {
 		p=$(awk '{print $4}' "/proc/$p/stat" 2>/dev/null) || return 1
 	done
 	# A herdr runner is never an agent, whatever words its argv happens to carry.
-	tr '\0' ' ' <"/proc/$pid/cmdline" 2>/dev/null | grep -q 'herdr-sdlc\|herdr-pipeline\|herdr-agents-lib' && return 0
+	# 2>/dev/null on the redirect too: pids vanish between the pgrep and this read,
+	# and a bare `<"/proc/$pid/cmdline"` prints a shell error per dead pid, which
+	# spammed a real run's log with dozens of "No such file or directory" lines.
+	{ tr '\0' ' ' <"/proc/$pid/cmdline" 2>/dev/null || true; } 2>/dev/null |
+		grep -q 'herdr-sdlc\|herdr-pipeline\|herdr-agents-lib' && return 0
 	return 1
 }
 

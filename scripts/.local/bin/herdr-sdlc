@@ -140,6 +140,9 @@ if ! flock -n 9; then
 	flock -n 9 || { printf 'could not reclaim the lock on %s; aborting.\n' "$BRANCH" >&2; exit 9; }
 fi
 printf '%s' "$$" >"$runs/.run.pid"
+# ISO-8601 UTC, matching the `timestamp=YYYY-MM-DDTHH:MM:SS.sssZ` prefix that
+# opencode/codex logs use, so provider_walled can lexically skip older lines.
+RUN_STARTED_AT="$(date -u +%Y-%m-%dT%H:%M:%S)"
 # Release is implicit on exit (fd closes), but drop the pid so status is honest.
 trap 'rm -f "$runs/.run.pid"' EXIT
 
@@ -181,13 +184,37 @@ run_agent_stage() {
 stage_ok() {
 	local f="$1"
 	[[ -s $f ]] || return 1
-	grep -qiE '^Error: timeout|no output produced|^error:' "$f" && return 1
+	# A VERDICT line means a reviewer reached a conclusion. That OUTRANKS every
+	# error heuristic below, because a real review QUOTES failing output: a 1.18 MB
+	# codex review carrying `error: expect(received).toEqual(expected)` and
+	# `error: Failed to listen at 127.0.0.1` — test output it was reporting on —
+	# was renamed .FAILED.md and discarded. The run then continued with ONE
+	# reviewer and printed "all 1 reviewers say SHIP", destroying the
+	# cross-provider guarantee over three P1 findings that were all correct.
+	# Never judge a transcript's health by strings that appear inside its content.
+	grep -qE '^[[:space:]]*(\*\*)?VERDICT:' "$f" && return 0
+	# Error patterns are only meaningful at the very START of the transcript —
+	# that is where a launcher/CLI failure lands. Deeper hits are quoted output.
+	head -c 4096 "$f" | grep -qiE '^Error: timeout|no output produced|^error:' && return 1
 	# A shell-level E2BIG lands IN the output file and otherwise reads like a real
 	# answer: the next stage happily consumes "argument list too long" as its
 	# instructions. Seen for real — the implementer said its fix list "contains
 	# only a corrupted shell error" and re-did the whole task from scratch.
 	grep -qiE 'argument list too long|:[[:space:]]*command not found' "$f" && return 1
 	return 0
+}
+
+# Did this reviewer actually finish, or did it grade while still working?
+#
+# agy returned a 3.5 KB "review" whose first line was
+#   root agent idle; waiting for 2 background task(s)
+# followed by a confident VERDICT: SHIP over a diff that had three real P1s. Its
+# own analysis had not completed. A verdict emitted while background work is
+# outstanding is not a verdict, and counting it cost a full review seat.
+review_incomplete() {
+	local f="$1"
+	[[ -s $f ]] || return 0
+	grep -qiE 'waiting for [0-9]+ background task|root agent idle|print-timeout (reached|exceeded)' "$f"
 }
 
 # Reviews are transcripts, not verdicts: a codex review here reached 1.5 MB of
@@ -273,6 +300,45 @@ log "plan -> $runs/plan.md"
 # lane and silently moves spend onto a metered one.
 OPENCODE_LANE="${OPENCODE_LANE:-opencode-go/glm-5.3,opencode-go/deepseek-v4-pro,opencode-go/kimi-k2.7-code,opencode-go/minimax-m3,opencode-go/qwen3.7-plus}"
 
+# Is this provider refusing work because the ACCOUNT is over its plan limit?
+#
+# Distinct from a dead model or a sick provider: no model behind this provider
+# will work, and no amount of waiting helps. Two places to look, because the
+# useful one is not the obvious one:
+#   1. the stage transcript — where a well-behaved CLI prints the error;
+#   2. the provider's own log — opencode returns the 429 in ~0.4s and then HANGS
+#      without writing anything to stdout, so the transcript stays stuck at its
+#      banner line and the stage dies by timeout with no stated cause. Its log
+#      is the only record that says "Weekly usage limit reached".
+# Only reads log lines written during THIS run, so a wall from last week cannot
+# poison today.
+#   provider_walled <kind> <transcript>
+WALL_RE='usage limit reached|quota exceeded|rate_limit_exceeded|insufficient_quota|billing.*(hard limit|not active)|plan limit reached|credit balance is too low'
+provider_walled() {
+	local kind="$1" out="$2" log=""
+	[[ -s $out ]] && grep -qiE "$WALL_RE" "$out" && return 0
+	case "$kind" in
+		opencode) log="$HOME/.local/share/opencode/log/opencode.log" ;;
+		codex)    log="$HOME/.codex/log/codex-tui.log" ;;
+		*) return 1 ;;
+	esac
+	[[ -s $log ]] || return 1
+	# Only the tail: these logs are append-only and long.
+	# Extract the line's own timestamp rather than comparing the whole line —
+	# opencode prefixes every line with `timestamp=`, so a raw `$0 >= since`
+	# compares "t..." against "2026..." and is ALWAYS true, which silently
+	# disables the time window and lets last week's wall trip today's run.
+	tail -n 400 "$log" 2>/dev/null |
+		awk -v since="$RUN_STARTED_AT" '
+			{
+				ts = ""
+				if (match($0, /[0-9]{4}-[0-9]{2}-[0-9]{2}T[0-9]{2}:[0-9]{2}:[0-9]{2}/))
+					ts = substr($0, RSTART, RLENGTH)
+				if (since == "" || ts == "" || ts >= since) print
+			}' |
+		grep -qiE "$WALL_RE"
+}
+
 implement() {
 	local prompt="$1" out="$2" kind model
 	local -a lane=()
@@ -281,9 +347,13 @@ implement() {
 			local -a OCM=()
 			IFS=',' read -ra OCM <<<"$OPENCODE_LANE"
 			for model in "${OCM[@]}"; do lane+=("opencode|$model"); done
-			lane+=("codex|" "claude|sonnet") ;;
-		codex) lane+=("codex|" "claude|sonnet") ;;
-		claude) lane+=("claude|sonnet" "codex|") ;;
+			# Claude Sonnet before codex: both are real fallbacks, but Sonnet is
+			# flat-rate on Claude Max and codex is metered. When opencode-go hits
+			# its weekly wall (see the usage-limit breaker below) the whole lane
+			# moves at once, so the next seat must not silently start spending.
+			lane+=("claude|$MODEL_CLAUDE_IMPL" "codex|") ;;
+		codex) lane+=("codex|" "claude|$MODEL_CLAUDE_IMPL") ;;
+		claude) lane+=("claude|$MODEL_CLAUDE_IMPL" "codex|") ;;
 		*) warn "unsupported implementer: $IMPLEMENTER"; return 1 ;;
 	esac
 
@@ -297,9 +367,21 @@ implement() {
 	# remaining models and change lane immediately.
 	local timeouts=0 last_kind=""
 	local entry before after
+	# PROVIDER WALLED — a quota wall is not a model failure.
+	# When a provider's plan limit is hit, EVERY model behind it fails the same
+	# way and walking them is pure waste. opencode-go returned
+	# "Weekly usage limit reached. Resets in 2 days." in 0.4s, then the CLI HUNG
+	# instead of exiting: no CPU, no writes, transcript stuck at the banner line.
+	# Each model therefore looked merely slow and burned a full 3600s pane budget
+	# — five models = five hours to discover a billing wall. Detect the wall in
+	# the transcript and abandon the whole provider immediately.
+	local -A walled=()
 	for entry in "${lane[@]}"; do
 		kind="${entry%%|*}" model="${entry#*|}"
 		agent_available "$kind" || continue
+		if [[ -n ${walled[$kind]:-} ]]; then
+			continue
+		fi
 		if [[ $kind == "$last_kind" ]] && ((timeouts >= 2)); then
 			warn "provider $kind timed out $timeouts times in a row; skipping its remaining models"
 			continue
@@ -316,6 +398,16 @@ implement() {
 		run_agent_stage "$kind" "$prompt" "$out" "implement:$kind" "$model"
 		local rc=$?
 		after=$(git -C "$dest" status --porcelain 2>/dev/null | sort | md5sum)
+
+		# Did this attempt die on a plan/quota wall? Check the transcript AND the
+		# provider's own log — opencode hangs without ever writing the error to
+		# stdout, so the transcript alone reports nothing and the stage just
+		# times out. The log is the only place the real cause appears.
+		if provider_walled "$kind" "$out"; then
+			walled[$kind]=1
+			warn "provider $kind is over its plan limit; abandoning its remaining models"
+			continue
+		fi
 
 		# Transcript command/test errors are not agent exit failures. Review and
 		# local gates judge the resulting code, not a regex over its transcript.
@@ -481,6 +573,13 @@ Be specific and terse. Do not modify any files. Do not commit."
 			mv "$runs/review-$round-$rv.md" "$runs/review-$round-$rv.FAILED.md" 2>/dev/null || true
 			continue
 		fi
+		# A verdict issued while the reviewer's own work is still outstanding is
+		# not a verdict. Keep the artifact readable but do not let it vote.
+		if review_incomplete "$runs/review-$round-$rv.md"; then
+			warn "reviewer $rv graded before finishing its own analysis; not counting its verdict"
+			mv "$runs/review-$round-$rv.md" "$runs/review-$round-$rv.INCOMPLETE.md" 2>/dev/null || true
+			continue
+		fi
 		reviewed=$((reviewed + 1))
 		# Only an explicit unqualified SHIP counts. "SHIP WITH FIXES" is not a ship.
 		if grep -qE '^VERDICT:[[:space:]]*SHIP[[:space:]]*$' "$runs/review-$round-$rv.md"; then
@@ -488,8 +587,22 @@ Be specific and terse. Do not modify any files. Do not commit."
 		fi
 	done
 
+	# HOW MANY REVIEWERS WERE SUPPOSED TO SIT? The whole point of this pipeline is
+	# that no single company both writes and judges. If only one seat survives,
+	# "all 1 reviewers say SHIP" is a tooling failure wearing a verdict's clothes —
+	# it shipped a diff carrying three correct P1 findings because the OTHER
+	# reviewer's 1.18 MB report was discarded by a bad health check.
+	expected_reviewers=0
+	for rv in "${RVS[@]}"; do
+		rv="$(printf '%s' "$rv" | tr -d ' ')"
+		[[ -z $rv || $rv == "$impl_now" ]] && continue
+		agent_available "$rv" && expected_reviewers=$((expected_reviewers + 1))
+	done
+
 	if ((reviewed == 0)); then
 		warn "no reviewer produced a verdict this round; treating as unreviewed"
+	elif ((ships == reviewed)) && ((reviewed < expected_reviewers)) && ((expected_reviewers > 1)); then
+		warn "only $reviewed of $expected_reviewers reviewers returned a usable verdict; a lone SHIP is not the cross-provider guarantee — continuing to the next round"
 	elif ((ships == reviewed)); then
 		log "all $reviewed reviewers say SHIP"
 		verdict_state="ship"
