@@ -368,6 +368,24 @@ agent_run() {
 # that do not exist there.
 repo_rules() {
 	local repo="$1"
+	# Always-on style for every dispatched worker, any CLI, any repo. Role-split on
+	# purpose: ultra makes authors cut code; a reviewer on ultra waves through missing tests.
+	cat <<'EOF'
+Working style (always on):
+- ponytail: before writing code, stop at the first rung that holds: does it need to
+  exist -> already in this codebase -> stdlib -> native platform feature -> installed
+  dependency -> one line -> only then the minimum code that works. No unrequested
+  abstractions.
+- If you WRITE code (author / implementer): ponytail ULTRA. Deletion before addition.
+  Ship the smallest change and say which parts of the requirement you think are
+  unnecessary. Ultra cuts code, never the tests the change needs and never verification.
+- If you REVIEW or PLAN: ponytail full. Flag over-built code, but never accept missing
+  tests, missing error handling at real boundaries, or unverified claims as "simpler".
+- Reports: caveman phrasing, i-have-adhd structure. Next action first, numbered steps,
+  no preamble. Keep paths, commands, numbers and error strings verbatim. Never shorten
+  an admission that something failed or is unverified.
+
+EOF
 	[[ -f "$repo/AGENTS.md" ]] || return 0
 
 	# Media production: Blender/Python, no bun, hard creative gates.
