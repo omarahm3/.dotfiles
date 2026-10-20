@@ -7,6 +7,12 @@ onboarding = false
 name = "rose-pine"
 
 auto_switch = false
+
+[theme.custom]
+# copy-mode search: non-current matches use surface1 (near-invisible in rose-pine);
+# the current match uses ui.accent
+surface1 = "#8a6420"
+
 [terminal]
 # tmux: default-terminal / terminal-overrides are handled by herdr itself
 new_cwd = "follow"
