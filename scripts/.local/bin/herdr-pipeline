@@ -139,7 +139,6 @@ fi
 
 codex_trust_dir "$dest"
 base_sha=$(git -C "$dest" rev-parse HEAD)
-
 # ------------------------------------------------------------------- author --
 log "author: $AUTHOR ${AUTHOR_MODEL:+($AUTHOR_MODEL)}"
 author_prompt="$(repo_rules "$REPO")
