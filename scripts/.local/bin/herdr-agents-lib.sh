@@ -36,7 +36,7 @@ AGENT_AGY="${AGENT_AGY:-$(_resolve_agent agy "$HOME/.local/bin/agy")}"
 # metered plans ($20 Codex, Agy Pro) so they get short, high-value prompts.
 MODEL_OPENCODE="${MODEL_OPENCODE:-opencode-go/glm-5.3}"
 MODEL_OPENCODE_CHEAP="${MODEL_OPENCODE_CHEAP:-opencode/mimo-v2.5-free}"
-MODEL_AGY="${MODEL_AGY:-gemini-3.1-pro-high}"
+MODEL_AGY="${MODEL_AGY:-gemini-3.8-flash-high}"
 # Claude Code's implementer seat. Sonnet, not opus: opus holds the planner and
 # triage seats, and one model must not both author and judge its own work.
 # Flat-rate on Claude Max, so it is a real fallback when opencode-go is walled.
